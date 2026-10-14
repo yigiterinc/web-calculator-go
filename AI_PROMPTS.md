@@ -1,8 +1,8 @@
 # AI usage disclosure and prompt log
 
-AI assistance: OpenAI Codex assisted with environment inspection, official documentation research, planning and its revision, and the backend setup task. Implementation and executed verification are recorded in TASKS.md; arithmetic, the calculation handler, and frontend remain pending.
+AI assistance: OpenAI Codex assisted with environment inspection, official documentation research, planning and its revision, the backend setup task, and the calculator core. Implementation and executed verification are recorded in TASKS.md; the calculation handler and frontend remain pending.
 
-Scope: this log preserves the initial user-supplied project prompt and the subsequent revision/setup prompt below verbatim. It is not a complete transcript of system/developer instructions, tool calls, or assistant messages, and does not claim to include all interactions. Append subsequent user prompts chronologically, exactly as supplied, with related task IDs where practical; explicitly label any unavailable material rather than reconstructing it.
+Scope: this log preserves the initial user-supplied project prompt and subsequent user prompts below verbatim. It is not a complete transcript of system/developer instructions, tool calls, or assistant messages, and does not claim to include all interactions. Append subsequent user prompts chronologically, exactly as supplied, with related task IDs where practical; explicitly label any unavailable material rather than reconstructing it.
 
 ## 2026-10-14 — Prompt 001 — Task 1.1: initial planning
 
@@ -255,4 +255,37 @@ Stop after this task and report:
 - The next proposed task
 
 Do not continue automatically.
+````
+
+## 2026-10-14 — Prompt 003 — Task 2.2: calculator core
+
+Source: user message, copied verbatim. The enclosing fence is not part of the prompt.
+
+````text
+Proceed with Task 2.2: implement the calculator core.
+
+Before implementation, read AGENTS.md, TASKS.md, and the relevant architecture decisions.
+
+Requirements:
+
+- Implement the four arithmetic operations: addition, subtraction, multiplication, and division.
+- Use float64 as agreed.
+- Keep the calculation package entirely independent of HTTP and infrastructure.
+- Follow idiomatic Go practices, especially naming, error handling, and package design.
+- Handle division by zero, unsupported operations, non-finite operands, and non-finite results.
+- Do not introduce interfaces, unnecessary abstractions, or third-party dependencies.
+- Use table-driven unit tests covering normal operations, negative numbers, zero, fractional values, and important numeric edge cases.
+- Keep the public API of the calculator package minimal.
+- Do not implement HTTP handlers or frontend functionality.
+
+After implementation:
+
+1. Run gofmt, go vet, go test, and go test -race.
+2. Generate and report calculation package test coverage.
+3. Review the implementation for idiomatic Go and opportunities to simplify.
+4. Update TASKS.md and relevant documentation.
+5. Record this prompt in AI_PROMPTS.md.
+6. Explain the public API, important Go-specific design decisions, and test results.
+
+Stop after completing Task 2.2. Do not automatically proceed to the HTTP API implementation.
 ````

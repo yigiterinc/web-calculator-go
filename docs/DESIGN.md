@@ -1,6 +1,6 @@
 # Calculator design
 
-Status: backend architecture and API policy accepted; frontend/deployment decisions revised per user review on 2026-10-14. Task 2.1 authorizes only the backend scaffold. Keypad transition rules below elaborate the requested interaction model; implementation remains pending.
+Status: backend architecture and API policy accepted; frontend/deployment decisions revised per user review on 2026-10-14. Task 2.2 adds only the calculator core to the completed server scaffold. Keypad transition rules below elaborate the requested interaction model; implementation remains pending.
 
 ## Initial environment evidence (planning snapshot)
 
@@ -12,7 +12,7 @@ Status: backend architecture and API policy accepted; frontend/deployment decisi
 
 ## Agreed structure and flow
 
-Target layout; frontend files remain future work. Task 2.1 creates only the Go module, package placeholders, local server scaffold/tests, and setup documentation:
+Target layout; frontend files remain future work. The Go module, server scaffold/tests, and calculator core/tests are implemented; httpapi remains a package placeholder:
 
 ```text
 sezzle-calculator/
@@ -93,6 +93,12 @@ Accepted numeric type: Go `float64`, matching JavaScript's binary floating-point
 - Binary rounding is expected (`0.1 + 0.2` may produce `0.30000000000000004`); integers beyond 2^53 are not guaranteed exact. Underflow may round to zero. Do not claim arbitrary precision.
 - Normalize a zero result to positive zero for consistent display. Do not silently round other results to a fixed number of decimal places; render the returned number with normal number-to-string formatting, including scientific notation when needed.
 
+### Implemented core API (task 2.2)
+
+`calculator.Calculate(operation string, a, b float64) (float64, error)` accepts exactly `add`, `subtract`, `multiply`, or `divide`. It validates operation before operands, rejects non-finite operands, then checks division by signed zero and non-finite results. Every error returns zero plus one of four errors: `ErrUnsupportedOperation`, `ErrNonFiniteOperand`, `ErrDivisionByZero`, or `ErrNonFiniteResult`. Callers use `errors.Is`; HTTP error codes/statuses remain the future transport layer's responsibility.
+
+The core is stateless and imports only errors and math. Tests use the external calculator_test package to exercise the public API, with exact expected float64 values (including deliberately rounded decimal examples) and explicit signed-zero assertions. There is no tolerance that could hide subnormal-value regressions. This implements the numeric policy above without changing the REST contract.
+
 ## Frontend interaction model
 
 Use React, TypeScript, Vite, and plain CSS for a traditional calculator, with a prominent numeric display, a smaller operation/expression line, and a conventional four-column keypad. Controls include 0–9, decimal, ±, clear, backspace, +, −, ×, ÷, and equals. A minimal professional design should use restrained colors, tabular digits, deliberate spacing/type hierarchy, distinct operator/equals emphasis, and clear hover/pressed/focus/disabled states. Keep touch targets at least 44px, fit a 320px viewport, and accommodate long/scientific results without losing their value. Do not truncate or round the stored API result.
@@ -149,4 +155,4 @@ Deployment is an optional final milestone after the required implementation, doc
 
 ## Current implementation boundary
 
-Task 2.1 sets up the module, `cmd/server`, `internal/calculator`, and `internal/httpapi`. The internal packages initially contain documentation only. An empty explicit ServeMux backs the local server, so every route (including POST /api/calculate) returns the standard 404 until the handler task. No arithmetic, health endpoint, placeholder calculation response, or frontend is included. PORT defaults to 8080; validate it before listening and set finite HTTP timeouts. README.md records actual startup behavior and tests.
+The module and server scaffold from task 2.1 are present. Task 2.2 implements only internal/calculator and its tests/documentation. internal/httpapi still contains package documentation only. The local server's empty ServeMux is unchanged: POST /api/calculate returns the standard 404 until task 2.3. No HTTP handler, frontend, or deployment work is included. README.md records current usage and TASKS.md records executed checks.

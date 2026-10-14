@@ -47,6 +47,4 @@ Use React, TypeScript, Vite, plain CSS, Vitest, and React Testing Library. Use G
 
 ## Current approved scope
 
-The user accepted the standard-library Go architecture and existing API/float64/error policy, replaced the form UI with a polished keypad, and made deployment optional. Task 2.1 now covers ONLY the Go module, agreed package structure, local HTTP server scaffold, toolchain/build verification, and minimal meaningful tests. Do not implement arithmetic, the calculation handler, or frontend in this task. Stop after reporting task 2.1 and wait for approval of task 2.2.
-
-Task 2.1 is now complete; the agent must remain stopped until the user approves task 2.2 or supplies another scoped task.
+Task 2.2 was approved and is now complete: the calculator core uses float64, four operations, explicit numeric errors, a minimal public API, and table-driven tests. Keep it independent of HTTP/infrastructure and add no third-party dependencies or interfaces. Formatting, vet, normal/race tests, calculation-package coverage, simplicity review, and project record updates are complete. Do not implement the HTTP handler or frontend. Stop after task 2.2 and wait for approval of task 2.3.

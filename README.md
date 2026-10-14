@@ -1,6 +1,6 @@
 # Sezzle Calculator
 
-A full-stack calculator take-home using Go and React/TypeScript. **Current status: backend setup only.** The local HTTP server starts, but no routes are registered yet. Arithmetic, POST /api/calculate, and the frontend are pending. Deployment is optional.
+A full-stack calculator take-home using Go and React/TypeScript. **Current status: server scaffold and calculator core implemented.** The core supports the four arithmetic operations with numeric validation. The local HTTP server starts, but no routes are registered yet; POST /api/calculate and the frontend are pending. Deployment is optional.
 
 ## Requirements and setup
 
@@ -50,12 +50,38 @@ go vet ./...
 gofmt -l cmd internal
 ```
 
-The formatter check should print nothing. Current tests cover valid/default/invalid port configuration and unregistered routes using testing/httptest. The documentation-only internal packages have no behavior or tests yet. Full calculator coverage reports will be introduced with implementation; no coverage threshold is imposed.
+The formatter check should print nothing. Tests cover server configuration/unregistered routes and the calculator's arithmetic/error/numeric-edge behavior. The httpapi package remains documentation-only. Generate calculator-only coverage with:
+
+```sh
+mkdir -p coverage
+go test -count=1 -coverprofile=coverage/calculator.out ./internal/calculator
+go tool cover -func=coverage/calculator.out
+go tool cover -html=coverage/calculator.out -o coverage/calculator.html
+```
+
+Reports are generated under the ignored coverage/ directory. Coverage is diagnostic, with no percentage gate; see TASKS.md for executed results and scope.
+
+## Calculator package API
+
+```go
+func Calculate(operation string, a, b float64) (float64, error)
+```
+
+Import `sezzle-calculator/internal/calculator` from within this module. Supported names are exactly `add`, `subtract`, `multiply`, and `divide`; subtraction and division use a as the left operand. The function is stateless and returns zero on error. Callers can use `errors.Is` with these sentinel errors rather than matching message strings:
+
+| Error | Condition |
+| --- | --- |
+| `ErrUnsupportedOperation` | Unknown, empty, differently cased, or whitespace-padded operation |
+| `ErrNonFiniteOperand` | Either operand is NaN or positive/negative infinity |
+| `ErrDivisionByZero` | Division by either sign of zero |
+| `ErrNonFiniteResult` | Arithmetic produces a non-finite result (including overflow) |
+
+Validation order is operation, operands, then arithmetic-specific checks. Successful results retain native float64 rounding, including integer precision limits and underflow to zero. Zero results are normalized to positive zero; tiny nonzero operands/results remain valid. No decimal rounding, epsilon-based zero check, HTTP types, or third-party libraries are involved.
 
 ## Structure and rationale
 
 - `cmd/server`: process entry point, configuration, and explicit net/http server with its own ServeMux.
-- `internal/calculator`: arithmetic package placeholder; no calculation logic yet.
+- `internal/calculator`: stateless arithmetic and numeric validation, tested through its exported API.
 - `internal/httpapi`: transport package placeholder; no calculation handler yet.
 
 `internal` keeps implementation packages private to this module tree. An explicit mux avoids global route registration. The unexported server constructor returns a server and error so configuration is testable without opening a socket; main owns environment access, logging, and listening. No application-specific interfaces or framework are needed.

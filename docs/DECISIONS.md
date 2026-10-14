@@ -46,6 +46,14 @@ Alternatives: percentage gates can encourage low-value assertions; deferring tes
 
 Status: **implemented within approved task 2.1**, 2026-10-14.
 
-Use Go 1.27.2, verified from the official download manifest and a checksum-verified user-local archive; keep the toolchain outside the repository. The module is named `sezzle-calculator` until a public destination is known, with no external dependencies. The server uses its own empty ServeMux, PORT default 8080 with range validation, and finite HTTP timeouts. Internal packages are documentation-only placeholders.
+Use Go 1.27.2, verified from the official download manifest and a checksum-verified user-local archive; keep the toolchain outside the repository. The module is named `sezzle-calculator` until a public destination is known, with no external dependencies. The server uses its own empty ServeMux, PORT default 8080 with range validation, and finite HTTP timeouts. At completion of task 2.1, both internal packages were documentation-only placeholders; task 2.2 adds the calculator implementation (D007).
 
 Alternatives: relying on DefaultServeMux introduces global registration; adding a health or placeholder calculation endpoint would expand the approved scope; choosing a remote module path now would invent a repository destination. Trade-off: the scaffold returns standard 404 for all routes and does not yet support graceful request draining. The small unexported constructor accepts a port string for configuration tests; main owns process effects. README.md documents the all-interface bind and current behavior.
+
+## D007 — Minimal arithmetic API and comparable errors
+
+Status: **implemented within approved task 2.2**, 2026-10-14.
+
+Expose Calculate(operation string, a, b float64) (float64, error) and four sentinel errors. Keep operation names as plain strings matching the accepted domain vocabulary; use an early whitelist switch for deterministic operation-first validation, then operand checks and a small arithmetic switch. Return zero on failure. errors.Is lets a future transport layer classify failures without matching messages or adding HTTP concerns to the core.
+
+Alternatives: a custom operation type/constants, an operation-to-function registry, an error struct, or an interface adds public surface without useful behavior for four operations. Repeating the operation cases in two small switches is simpler than those abstractions and keeps validation order explicit. There is no mutable calculation state. Numeric guards reject NaN/Infinity, check zero exactly (including negative zero), preserve underflow/subnormals, and normalize zero outputs. The result NaN check is defensive: with finite operands and zero division rejected, the implemented operations cannot produce NaN; overflow tests exercise non-finite-result errors without manufacturing an impossible public-input path.

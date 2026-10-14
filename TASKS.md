@@ -2,7 +2,7 @@
 
 ## Current task
 
-**2.1 — Backend setup and local server scaffold: complete.** Stopped at the approved boundary. Next proposed task: **2.2 — calculation core**, awaiting explicit approval. No arithmetic, calculation handler, or frontend implementation has begun.
+**2.2 — Calculation core: complete.** Stopped at the approved boundary. Next proposed task: **2.3 — REST calculation handler**, awaiting explicit approval. HTTP and frontend remain pending.
 
 Each implementation checkbox is a separate approval boundary. Read AGENTS.md and relevant design documentation, implement only the approved scope, add relevant tests, record actual checks, update documentation/prompt disclosure, then stop. The original 2–4 hour budget remains a scope guide; keypad behavior adds work, and review/toolchain setup time is separate. Do not sacrifice required behavior to meet an estimate.
 
@@ -25,9 +25,14 @@ Each implementation checkbox is a separate approval boundary. Read AGENTS.md and
   - Live smoke: launched bin/server with PORT=60931, sent POST /api/calculate with a valid-shaped JSON body, and verified 404/plain-text unimplemented response; stopped the process. A separate run with PORT=invalid exited nonzero with the expected message. Python drove these process/HTTP checks; no test server remains running.
   - Files created: go.mod, .gitignore, README.md, cmd/server/main.go, cmd/server/main_test.go, internal/calculator/doc.go, internal/httpapi/doc.go. Files updated: AGENTS.md, TASKS.md, docs/DESIGN.md, docs/DECISIONS.md, AI_PROMPTS.md. Generated bin/server is ignored.
   - Remaining: internal packages contain only package documentation, so they have no tests yet; no arithmetic, API handler, frontend, graceful draining, Git initialization, or deployment. Those are outside this task. Setup/toolchain/build verification has no outstanding blocker.
-- [ ] **2.2 Implement calculation core.** Depends on 2.1 and explicit approval.
+- [x] **2.2 Implement calculation core.** Approved and completed after 2.1.
   - Acceptance: four operations and accepted float64/error policy; table-driven tests for order, zero/negative/fractional operands, division by signed zero, unsupported operations, non-finite inputs/results, precision and underflow. Arithmetic package has no HTTP dependencies.
   - Checks: gofmt, go vet, tests and core coverage report; inspect meaningful uncovered paths; explain explicit Go errors.
+  - Verification (2026-10-14, Go 1.27.2 darwin/arm64): ran `gofmt -w internal/calculator`; `gofmt -l cmd internal` printed nothing. `go vet ./...`, `go test ./...`, and `go test -race ./...` all passed. The core contains 53 table-driven subtests; existing server tests also pass; httpapi still has no test files.
+  - Coverage: `go test -count=1 -coverprofile=coverage/calculator.out ./internal/calculator` passed with **100.0% calculator statement coverage**. `go tool cover -func=coverage/calculator.out` confirmed it; `go tool cover -html=coverage/calculator.out -o coverage/calculator.html` generated the HTML report. This is calculator-package statement coverage, not whole-backend or branch coverage; no percentage gate was used.
+  - Review: verified one exported function plus four sentinel errors, errors.Is-based tests, no interfaces/dependencies or transport coupling; `go list -f '{{.ImportPath}}: {{join .Imports ", "}}' ./internal/calculator` reported only errors and math. Reviewed operation/operand error precedence, exact signed-zero handling, overflow/underflow, subnormal preservation, and precision cases. Kept two small switches for explicit validation order rather than adding an operation registry/type; documented the defensive result-NaN guard in D007.
+  - Files: added internal/calculator/calculator.go and calculator_test.go; updated internal/calculator/doc.go, AGENTS.md, TASKS.md, README.md, docs/DESIGN.md, docs/DECISIONS.md, and AI_PROMPTS.md (verbatim Prompt 003). Coverage reports are generated/ignored. No server or HTTP package code changed.
+  - Remaining: no arithmetic blockers. HTTP mapping/handler and frontend remain unimplemented; next task 2.3 requires approval.
 - [ ] **2.3 Implement REST calculation handler.** Depends on 2.2 and approval.
   - Acceptance: shared handler wired into local server; existing request/status/error/header contract, full bounded input validation; httptest cases alongside code; README curl examples reflect real behavior.
   - Checks: gofmt/vet/tests, live requests for four operations and failure cases, no external Go dependencies or frontend arithmetic.

@@ -1,2 +1,2 @@
-// Package calculator will contain arithmetic independent of HTTP transport.
+// Package calculator provides finite float64 arithmetic independent of transport.
 package calculator
