@@ -91,3 +91,11 @@ Accept only HTTP 200 JSON containing a finite numeric result. Recognized error c
 The interface uses a restrained neutral/green palette, system typography, native buttons, readable expression/result displays and plain CSS. Long numbers wrap intact. Keyboard handling is scoped to the focused calculator; Enter/Space on buttons retain native semantics. Pending buttons use aria-disabled with explicit click guards to preserve focus, and AC remains usable. This avoids disabling a focused button and losing subsequent keyboard input. Error alerts and polite live updates provide feedback beyond color.
 
 React Testing Library, its DOM peer, user-event, jest-dom and jsdom are development-only additions; runtime dependencies remain React/DOM. Node engines now match jsdom requirements. Tests follow the [Testing Library setup guidance](https://testing-library.com/docs/react-testing-library/setup/) and exercise effect cleanup under [React StrictMode](https://react.dev/reference/react/useEffect). Actual runtime/build/browser evidence is recorded separately in TASKS.md. Trade-offs: this is one calculator page without a component library, global keyboard listeners, automatic retry, history or an expression parser; deployment and broader device/accessibility testing remain separate work.
+
+## D011 — Reproducible final coverage and submission boundary
+
+Status: **accepted, implemented within approved Task 3.3**, 2026-10-14.
+
+Use the existing Vitest runner with its matching development-only @vitest/coverage-v8 5.0.4 provider and test:coverage script, following the [official coverage setup](https://vitest.dev/guide/coverage.html). Include handwritten src TS/TSX application logic, exclude tests/declarations and mounting-only main.tsx; produce text, HTML, LCOV and JSON-summary output under coverage/frontend. Go's whole-backend profile includes all three packages and main, with HTML under coverage/backend. Generated reports are ignored and reproducible; measured summaries live in README/TASKS.
+
+No percentage gate or artificial tests: the behavior matrix and uncovered paths were reviewed. Runtime arithmetic/HTTP/reducer/UI behavior remains unchanged. Local Git now exists, superseding the historical initial planning snapshot; publication is still required by the supplied original assignment and awaits approval. Deployment remains optional.

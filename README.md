@@ -2,6 +2,8 @@
 
 A full-stack calculator take-home using Go and React/TypeScript. **Current status: working React calculator connected to the approved Go backend.** The responsive keypad supports mouse, touch, keyboard, result reuse, and sequential binary operations. POST /api/calculate performs all arithmetic and returns structured errors. Deployment is optional.
 
+Stack: React, TypeScript, Vite and plain CSS; Go standard-library HTTP/JSON; Vitest, React Testing Library and Go testing/httptest. Runtime frontend dependencies are React and React DOM; Go has no external dependencies.
+
 ## Requirements and setup
 
 Go **1.27.2** is declared in go.mod and was verified on macOS arm64. Install Go using the [official instructions](https://go.dev/doc/install); the [official download manifest](https://go.dev/dl/?mode=json) identified this stable version during setup on 2026-10-14. There are no third-party Go dependencies and no go.sum is needed.
@@ -29,7 +31,7 @@ npm test
 npm run build
 ```
 
-Task 3.2 passed **121 tests** (67 reducer, 32 API client, 22 React interaction cases), type checking, and the production build. `npm run test:watch` is available during development. Pure reducer/API tests use Node; component tests use jsdom, React Testing Library and user-event. Coverage review remains a separate milestone; no frontend percentage is claimed. `npm run preview` previews built assets locally; it is not a production hosting setup.
+Final QA passed **121 tests** (67 reducer, 32 API client, 22 React interaction cases), type checking, and the production build. `npm run test:watch` is available during development. Pure reducer/API tests use Node; component tests use jsdom, React Testing Library and user-event. `npm run preview` previews built assets locally; it is not a production hosting setup.
 
 ## Run locally
 
@@ -55,7 +57,7 @@ npm run dev
 
 Open the URL Vite prints (normally `http://localhost:5173`; it selects another port if occupied). Keep Go on 8080 for the configured proxy; if you change PORT, update the target in vite.config.ts too. Stop Vite with Ctrl+C. The frontend build creates dist/; production hosting/routing is deliberately undecided.
 
-Live task 3.2 verification used the already-running project Go server on 8080 and a new Vite server on 5174. In-browser keypad multiplication 12×5 returned 60, keyboard addition 12+5 returned 17, division by zero showed a useful error, and editing 8÷0 to 8÷2 returned 4. Curl through Vite independently confirmed HTTP 200/result 60 and HTTP 422/division_by_zero. Mobile checks at 320px had no horizontal page overflow; desktop was checked at 1280×960.
+Final QA launched a fresh Go server on 18080 and Vite on 5175 with a temporary proxy configuration (the existing 8080/5174 preview was left running). Actual browser checks exercised all four operations, negative/fractional entry, result reuse, Clear/Backspace/operator replacement, division-by-zero feedback and recovery. Proxy curl requests returned 200/result 60, 422/division_by_zero and 400/invalid_operand. A 320px layout had no horizontal overflow and keypad targets were at least 59px high.
 
 ## Using the calculator
 
@@ -123,19 +125,34 @@ go vet ./...
 gofmt -l cmd internal
 ```
 
-The formatter check should print nothing. Tests cover server configuration/routing, arithmetic edge cases, HTTP validation/envelopes/headers, body-size boundaries, and wrapped sentinel error mapping. They use only the standard library and no external services. Generate package-specific coverage with:
+The formatter check should print nothing. Tests cover server configuration/routing, arithmetic edge cases, HTTP validation/envelopes/headers, body-size boundaries, wrapped sentinel error mapping, reducer sequences and React/API request lifecycles. Automated suites are deterministic and independent of external services. Generate reproducible coverage reports from the repository root:
 
 ```sh
-mkdir -p coverage
-go test -count=1 -coverprofile=coverage/calculator.out ./internal/calculator
-go tool cover -func=coverage/calculator.out
-go tool cover -html=coverage/calculator.out -o coverage/calculator.html
-go test -count=1 -coverprofile=coverage/httpapi.out ./internal/httpapi
-go tool cover -func=coverage/httpapi.out
-go tool cover -html=coverage/httpapi.out -o coverage/httpapi.html
+npm run test:coverage
+mkdir -p coverage/backend
+go test -count=1 -coverprofile=coverage/backend/coverage.out ./...
+go tool cover -func=coverage/backend/coverage.out
+go tool cover -html=coverage/backend/coverage.out -o coverage/backend/index.html
 ```
 
-Reports are generated under the ignored coverage/ directory. Task 2.3 measured **96.1% HTTP package statement coverage**. The uncovered paths are the defensive serialization fallback and response-write failure after headers are committed; current validated response types do not trigger serialization failure, and disconnected-client delivery cannot be repaired with another response. Coverage is diagnostic, with no percentage gate; see TASKS.md for executed results and scope.
+Frontend text, HTML, LCOV and JSON-summary reports are written to `coverage/frontend/` (open `coverage/frontend/index.html`). Backend HTML is `coverage/backend/index.html`. All generated reports are ignored by Git; reviewers regenerate them with the commands above.
+
+Final QA measured the following on 2026-10-14:
+
+| Scope | Statements | Branches | Functions | Lines |
+| --- | --- | --- | --- | --- |
+| Frontend application logic (3 files) | 99.34% | 98.23% | 100% | 100% |
+| Frontend reducer | 100% | 100% | 100% | 100% |
+| Frontend API client | 100% | 100% | 100% | 100% |
+| Frontend React component | 98.46% | 95.89% | 100% | 100% |
+| Whole Go backend | 91.4% | — | — | — |
+| Go calculator package | 100.0% | — | — | — |
+| Go HTTP package | 96.1% | — | — | — |
+| Go server package | 50.0% | — | — | — |
+
+Frontend coverage includes handwritten src TS/TSX application logic, including files not imported by tests. It excludes test files, declaration-only files, and the mounting-only `main.tsx`; CSS, HTML and tool configuration are outside this executable-code metric. It is not whole-repository or browser/device coverage. Go's total is weighted statement coverage across all three packages, including main; Go does not report branch coverage here.
+
+Reviewed gaps: App's defensive cancelled-success, non-Error fallback and unrelated-input keyboard guard branches; Go process startup/fatal exits, the HTTP serialization fallback and return after a connection-write failure. Existing tests already verify request cancellation/stale results, while real browser/server checks exercise startup and mounting. No artificial tests or coverage threshold were added. See TASKS.md for the full verification record.
 
 ## Calculator package API
 
@@ -162,7 +179,7 @@ Validation order is operation, operands, then arithmetic-specific checks. Succes
 
 `internal` keeps implementation packages private to this module tree. An explicit mux avoids global route registration. The unexported server constructor returns a server and error so configuration is testable without opening a socket; main owns environment access, logging, and listening. No application-specific interfaces or framework are needed.
 
-The local module name `sezzle-calculator` avoids inventing a public Git destination. A remote can be selected at the submission milestone; adopting its canonical module path then is optional for this executable project. Frontend code lives in src/: App.tsx owns the keypad and request effect, calculator.ts owns pure transitions, api.ts owns transport/validation/cancellation, and styles.css owns presentation. No hosting adapter/configuration is included.
+The local module name `sezzle-calculator` avoids inventing a public Git destination. Git is initialized locally on master, with no remote configured at final QA. A public destination must be selected before submission; adopting its canonical module path then is optional for this executable project. Frontend code lives in src/: App.tsx owns the keypad and request effect, calculator.ts owns pure transitions, api.ts owns transport/validation/cancellation, and styles.css owns presentation. No hosting adapter/configuration is included.
 
 ## Calculator reducer
 
@@ -171,6 +188,20 @@ The local module name `sezzle-calculator` avoids inventing a public Git destinat
 Digits stay as text for decimal/sign/backspace editing. Selecting an operator saves the left operand; selecting another operator before entering the right operand replaces it. Equals with a right operand emits `pending.submission.request` containing `{ operation, a, b }`. An effect sends that request to Go and dispatches `resolved` or `rejected` with the submission ID; cleanup aborts the old effect. The reducer performs no calculation and initiates no network work.
 
 Results retain the exact returned number. A following operator reuses it; a digit or decimal starts fresh. Equals without a right operand or after a result does nothing. Selecting an operator after the second operand requests the current pair and saves the next operator for left-to-right chaining. Clear resets entry while preserving request identity progression; pending edits are blocked, and stale completions are ignored. API errors support retry or editing the right operand. Full edge behavior and scope are in [DESIGN.md](docs/DESIGN.md#explicit-state-model).
+
+## Assumptions and known limitations
+
+- Calculations use float64: decimal rounding, integers beyond 2^53 and underflow follow native binary floating-point behavior. Returned values are displayed without hidden rounding.
+- Sequential binary calculations run left-to-right. There is no general expression parser, precedence, repeated-equals operation, history or persistence.
+- Keyboard shortcuts operate while focus is inside the calculator. Enter/Space on a focused keypad button activate that button; Backspace outside the panel is not captured.
+- A running Go API is required for arithmetic. Failed requests are retryable; Clear cancels pending UI work. Cancellation cannot guarantee the server has not already completed a request.
+- Production hosting and API routing are not configured. Go serves the API; Vite serves the frontend locally. No deployment is required under the revised scope.
+- Graceful server draining is not implemented. Physical-device, cross-browser and screen-reader testing remain manual checks; accessible names, focus, keyboard semantics and responsive dimensions were verified in tests/the in-app browser.
+- Final QA found no functional submission blocker. The original supplied assignment requires a public Git repository; publication and public-readability verification remain pending approval. No separate employer assignment document was supplied beyond the original project prompt recorded in AI_PROMPTS.md.
+
+## AI assistance
+
+OpenAI Codex assisted with planning, implementation, tests, review and verification. [AI_PROMPTS.md](AI_PROMPTS.md) preserves significant user prompts with provenance and explicitly describes the log's limits; it is not a complete transcript. The developer reviewed the architecture/backend/reducer and manually exercised the application.
 
 ## Project records
 

@@ -1,6 +1,6 @@
 # AI usage disclosure and prompt log
 
-AI assistance: OpenAI Codex assisted with environment inspection, official documentation research, planning and its revision, the backend setup task, calculator core, REST API, read-only backend review, frontend setup/reducer, and the integrated React keypad/API client. Implementation and executed verification are recorded in TASKS.md.
+AI assistance: OpenAI Codex assisted with environment inspection, official documentation research, planning and its revision, the backend setup task, calculator core, REST API, read-only backend review, frontend setup/reducer, the integrated React keypad/API client, and final QA/submission preparation. Implementation and executed verification are recorded in TASKS.md.
 
 Scope: this log preserves the initial user-supplied project prompt and subsequent user prompts below verbatim. It is not a complete transcript of system/developer instructions, tool calls, or assistant messages, and does not claim to include all interactions. Append subsequent user prompts chronologically, exactly as supplied, with related task IDs where practical; explicitly label any unavailable material rather than reconstructing it.
 
@@ -697,4 +697,158 @@ Provide:
 7. Next proposed task.
 
 Stop after Task 3.2 and wait for approval.
+````
+
+## 2026-10-14 — Prompt 008 — Task 3.3: final quality assurance and submission preparation
+
+Source: user message, supplied twice with identical task text. Recorded once verbatim below. Ambient browser/page context is not part of this prompt; the enclosing fence is not part of the prompt.
+
+````text
+Proceed with Task 3.3 — Final Quality Assurance and Submission Preparation.
+
+The Go backend and React calculator are implemented and working. Manual testing confirmed that basic arithmetic, result reuse, keyboard interactions, and the on-screen keypad work correctly. The reported Backspace issue was caused by focus being moved away from the calculator, not an application bug.
+
+We are approaching the submission deadline. Prioritize correctness and delivery readiness over additional features.
+
+## 1. Review the project
+
+Read:
+
+- AGENTS.md
+- TASKS.md
+- README.md
+- docs/DESIGN.md
+- docs/DECISIONS.md
+- AI_PROMPTS.md
+
+Inspect the actual implementation and identify incomplete requirements.
+
+Check the application against Sezzle's original assignment, not just our internal task list.
+
+Do not introduce new features or unnecessary refactoring.
+
+## 2. Frontend quality assurance
+
+Review and test:
+
+- All four arithmetic operations
+- Keyboard and mouse interactions
+- Decimal and negative number entry
+- Clear and Backspace
+- Operator replacement
+- Result reuse
+- Division by zero
+- Network and API errors
+- Loading state and duplicate request prevention
+- Request cancellation and stale responses
+- Responsive layout and accessibility
+
+Add tests only where meaningful behavior is insufficiently covered.
+
+Verify that arithmetic is performed exclusively by the Go backend.
+
+Do not change the calculator's established interaction behavior without identifying a concrete problem.
+
+## 3. Backend verification
+
+Run:
+
+- gofmt
+- go vet ./...
+- go test ./...
+- go test -race ./...
+- go build ./...
+
+Do not refactor the backend unless a real defect is found.
+
+## 4. Frontend verification
+
+Run:
+
+- npm run typecheck
+- npm test
+- npm run build
+- npm run test
+
+If the coverage script does not exist, configure it using the existing test tooling.
+
+Generate reproducible coverage reports for both frontend and backend.
+
+Report actual coverage numbers, clearly distinguishing package-level and project-level coverage.
+
+Do not fabricate results or chase arbitrary coverage percentages.
+
+## 5. Integration testing
+
+Start the actual Go backend and Vite frontend.
+
+Verify frontend-to-backend communication.
+
+Exercise successful calculations and at least one API error through the actual application.
+
+If browser interaction cannot be tested automatically, explicitly report what requires manual verification.
+
+## 6. Documentation and deliverables
+
+Review and finalize README.md.
+
+It must include:
+
+- Project overview
+- Technology stack
+- Prerequisites
+- Installation instructions
+- How to run backend and frontend
+- How to run tests and generate coverage reports
+- API endpoint documentation
+- Example curl requests and responses
+- Design decisions and assumptions
+- Known limitations
+
+Review AI_PROMPTS.md:
+
+- Ensure prompts are recorded faithfully
+- Include significant AI-assisted design and implementation interactions
+- Do not invent missing prompts
+- Clearly disclose AI assistance
+
+Ensure generated coverage reports, binaries, node_modules, and other build artifacts are excluded appropriately from Git.
+
+## 7. Repository readiness
+
+Inspect:
+
+- git status
+- .gitignore
+- tracked files
+- repository structure
+- accidental secrets or credentials
+- unnecessary generated artifacts
+
+Do not push to GitHub yet.
+
+Do not commit automatically.
+
+Do not deploy yet.
+
+## 8. Final report
+
+Provide:
+
+1. Overall submission readiness: Ready / Needs minor fixes / Blocked
+2. Requirements checklist against the original Sezzle assignment
+3. Tests executed and results
+4. Backend and frontend coverage results
+5. Bugs discovered and fixes applied
+6. Documentation completeness
+7. Repository cleanliness
+8. Remaining manual verification steps
+9. Any submission blockers
+10. Recommended next action
+
+Update TASKS.md and AI_PROMPTS.md.
+
+Stop after completing this QA task and wait for approval.
+
+Remember: this is a 2–4 hour take-home. Keep the review proportional and avoid overengineering.
 ````

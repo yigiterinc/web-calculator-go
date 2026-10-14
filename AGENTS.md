@@ -47,4 +47,4 @@ Use React, TypeScript, Vite, plain CSS, Vitest, and React Testing Library. Use G
 
 ## Current approved scope
 
-Task 3.2 is complete: the React keypad, typed API client, request cancellation/timeout handling, Vite proxy, accessible keyboard controls, and responsive plain-CSS design are implemented and verified. The approved reducer, its 67 tests, and Go backend are unchanged. The user combined the previously proposed API integration and keypad tasks into this Task 3.2. Stop here; next proposed task 5.1 is frontend behavior/coverage review, subject to approval. No commit, push, deployment, or automatic continuation is authorized.
+Task 3.3 — Final Quality Assurance and Submission Preparation is complete. Functional review, full checks, coverage, live integration and submission documentation passed. The application has no identified blocker. The remaining required delivery step is public repository publication: local Git exists on master but has no remote. Stop and wait for approval; no commit, push, deployment or extra feature is authorized.

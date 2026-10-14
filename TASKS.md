@@ -2,7 +2,7 @@
 
 ## Current task
 
-**3.2 — React calculator UI and Go API integration: complete.** The user approved the combined UI/integration scope, superseding the earlier separate 3.2/3.3 proposal. Backend and reducer remain unchanged. Next proposed task: **5.1 — frontend behavior/coverage review**, awaiting approval.
+**3.3 — Final Quality Assurance and Submission Preparation: complete.** This user-approved task supersedes the proposed 5.1 coverage review and the documentation/reproducibility portion of 6.1. Application and local deliverables are ready; overall submission **needs minor fixes** because the required public Git repository has no remote/public URL yet. No functional blocker was found. Stop; publication requires separate approval.
 
 Each implementation checkbox is a separate approval boundary. Read AGENTS.md and relevant design documentation, implement only the approved scope, add relevant tests, record actual checks, update documentation/prompt disclosure, then stop. The original 2–4 hour budget remains a scope guide; keypad behavior adds work, and review/toolchain setup time is separate. Do not sacrifice required behavior to meet an estimate.
 
@@ -70,19 +70,45 @@ Task numbers and boundaries below follow the user's latest Task 3.1 instruction,
   - Files created: src/api.ts, src/api.test.ts, src/App.test.tsx, src/styles.css, src/vite-env.d.ts. Modified: src/App.tsx, vite.config.ts, package.json, package-lock.json, AGENTS.md, TASKS.md, README.md, docs/DESIGN.md, docs/DECISIONS.md, AI_PROMPTS.md (verbatim Prompt 007).
   - Boundaries: all 11 approved Go/module/reducer/test files confirmed unchanged by before/after SHA-256; Go tests were not rerun because backend files were unchanged. No frontend coverage report or percentage is claimed in this task. This Vite preview remains running on 5174; the pre-existing Go and unrelated Vite processes were not stopped. No commit, push, or deployment. No blocking issue remains for 3.2.
 
-The former proposed **3.3 polished keypad** is absorbed into completed 3.2, not an outstanding implementation task.
+The former proposed **3.3 polished keypad** was absorbed into 3.2. The user's latest instruction assigns **3.3** to final QA instead.
+
+- [x] **3.3 Final Quality Assurance and Submission Preparation.** Approved after 3.2.
+  - Acceptance: inspect the supplied original assignment and actual implementation; review meaningful behavior, run full backend/frontend checks, generate reproducible reports, exercise real integration, finalize docs/prompt disclosure and inspect repository readiness. No automatic commit, push or deployment.
+  - Review: all production arithmetic is in internal/calculator; frontend only edits input text, converts operands, validates responses and increments request IDs. Existing 121 tests meaningfully cover the requested behavior matrix, so no extra tests or application refactoring were needed. The reported Backspace issue was focus outside the panel, confirmed by the user and consistent with the documented keyboard scope.
+  - Dependency/configuration: announced and added exact dev dependency @vitest/coverage-v8 5.0.4 matching Vitest, plus test:coverage script and V8 text/HTML/LCOV/JSON-summary output. Include handwritten src TS/TSX, exclude tests, .d.ts declarations and mounting-only main.tsx; CSS/HTML/configuration are outside this frontend application-logic metric. No coverage gate. npm ci passed (117 packages installed, 118 audited, zero vulnerabilities); pre-existing python config and optional fsevents script warnings did not block checks.
+  - Backend checks (2026-10-14, Go 1.27.2 darwin/arm64): gofmt -w cmd internal; gofmt -l cmd internal printed nothing; go vet ./..., go test ./..., go test -race ./..., go build ./... all exited 0. Formatting made no backend changes. Built bin/server for real integration. Coverage command: go test -count=1 -coverprofile=coverage/backend/coverage.out ./...; go tool cover -func and -html succeeded.
+  - Backend statement coverage: whole backend **91.4%**, calculator package **100.0%**, HTTP package **96.1%**, server package **50.0%**. Reviewed gaps: main startup/fatal exits (main 0%, newServer 100%), HTTP marshal fallback and return on response-write failure. Live process smoke exercised startup; no artificial unit cases were added. Whole-backend coverage includes main; it is not branch coverage.
+  - Frontend checks: npm run typecheck, npm test, npm run build, npm run test and npm run test:coverage all passed. Each test run passed **121 tests in 3 files** (67 reducer, 32 API, 22 React). Build compiled 18 modules. Frontend application-logic aggregate: **99.34% statements (151/152), 98.23% branches (167/170), 100% functions (18/18), 100% lines (124/124)**. Reducer and API client each 100% on all four metrics; App 98.46% statements, 95.89% branches, 100% functions/lines. Reviewed App gaps at lines 58/63/74: redundant cancelled-success guard, non-Error fallback and unrelated interactive-input guard (no editable inputs in this panel). Actual client throws Error/DOMException; cancellation/stale-response behavior already has focused tests. No fabricated edge cases were added for coverage.
+  - Real integration: launched a fresh compiled Go process on **18080** and Vite on **5175**, with temporary ignored coverage/qa-vite.config.ts overriding only the QA proxy target. Browser keypad 12×5 → **60**; keyboard -1.5+2 → **0.5**; result reuse 0.5−1 → **-0.5**; Escape then 89/Backspace/+→÷/0 → division-by-zero alert; editing right operand to 2 → **4**. All four operations therefore exercised through actual UI/API. Proxy curl observed **200**/{"result":60}, **422**/division_by_zero and **400**/invalid_operand, with JSON/no-store/nosniff headers.
+  - Accessibility/responsive evidence: inspected real 320×800 rendering; page width 320 with no horizontal overflow, minimum button height 59px, all 19 controls named. Tab focused AC with solid 3px focus outline. Browser console had no captured warnings/errors. Viewport override reset. Screenshots: ignored coverage/screenshots/qa-mobile.jpg and qa-error.jpg. Physical touch, multiple browsers and actual screen-reader announcements remain optional manual verification; automated React tests cover touch/native keyboard and loading/cancellation/error paths.
+  - Repository: Git already initialized on master; HEAD d6c1669. No remote configured. Reviewed all 30 tracked files, structure, working tree, .gitignore and tracked-file secret patterns (private keys, common cloud/GitHub/API tokens, assigned credential literals); no suspected credentials or tracked generated artifacts found. This is a focused pattern/read review, not a guarantee against all secrets. node_modules, dist, coverage and bin/server were confirmed ignored. Only intended QA config/dependency/docs changes remain uncommitted; git diff --check passed.
+  - Prompt review: initial prompt matched attached Pasted text.txt exactly (apart from trailing newline). Existing significant user prompts were checked against available conversation context; the log explicitly does not claim full transcript coverage. Prompt 008 records this QA request verbatim, supplied twice identically. No missing interactions were reconstructed.
+  - Files modified: package.json, package-lock.json, vite.config.ts, README.md, AGENTS.md, TASKS.md, docs/DESIGN.md, docs/DECISIONS.md, AI_PROMPTS.md. Application/backend/reducer/test sources unchanged. Generated reports/binary/temp proxy config/screenshots are ignored.
+  - Cleanup: QA-only Go/Vite processes and QA browser tab stopped/closed after checks. Pre-existing Go 8080 and Vite 5174 preview preserved. No commit, push or deployment performed.
+
+### Supplied original assignment checklist
+
+The source is Prompt 001/attached Pasted text.txt; no separate employer assignment document was provided. User-approved later decisions make deployment optional.
+
+| Requirement | Final QA status |
+| --- | --- |
+| React + TypeScript frontend; Go REST backend | Pass |
+| Addition, subtraction, multiplication, division | Pass: core/HTTP tests and actual browser |
+| Input validation and robust errors | Pass: full HTTP validation, finite numbers, safe client errors |
+| Responsive calculator UI | Pass: desktop and 320px browser checks; keyboard/accessibility tests |
+| Unit tests and coverage reports for both layers | Pass: commands and reports documented, actual metrics above |
+| Setup instructions, API examples and design rationale | Pass: README/DESIGN/DECISIONS finalized |
+| Public Git repository | Pending: local Git exists, no remote/public URL; requires publication approval |
+| AI prompts disclosed | Pass: faithful scoped AI_PROMPTS.md and README disclosure |
+| 2–4 hour take-home scope | No new features/refactoring; optional hosting/CI/device matrix deferred |
 
 ## 5. Frontend verification
 
-- [ ] **5.1 Audit behavior and generate reports.** Depends on 3.2.
-  - Acceptance: meaningful coverage of keypad sequences, state transitions, API integration, keyboard input, async/error handling; text/HTML/LCOV reports and documented exclusions; fix regressions. No percentage gate.
-  - Checks: full frontend suite, typecheck/build, real API/browser smoke; record remaining gaps honestly.
+- [x] **5.1 Audit behavior and generate reports.** Completed within user-approved Task 3.3 above, rather than as a separate implementation task.
 
 ## 6. Required submission and public repository
 
-- [ ] **6.1 Final documentation, reproducibility, and public repository.** Depends on 5.1; requires task approval and repository destination/account access.
-  - Acceptance: README actual setup/API examples/design rationale/precision limits/testing and coverage; faithful scoped AI prompt log; initialize Git, review tracked files, commit/push public repository, verify public readability. Deployment is not required for completion.
-  - Checks: fresh-checkout setup/build/run/test, full Go/frontend suites and reports, public URL/commit and submission checklist recorded.
+- [ ] **6.1 Publish the prepared repository and verify public readability.** Documentation, local reproducibility and QA are complete under 3.3. Git has already been initialized by the user; no reinitialization is needed. Remaining acceptance: choose/confirm destination, review and commit the QA changes, push the public repository, verify public readability and record URL/commit. Requires explicit approval; no commit or push is authorized by Task 3.3.
 
 ## 7. Optional deployment (not a required submission dependency)
 
