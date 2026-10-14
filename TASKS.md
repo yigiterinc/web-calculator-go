@@ -2,7 +2,7 @@
 
 ## Current task
 
-**2.2 — Calculation core: complete.** Stopped at the approved boundary. Next proposed task: **2.3 — REST calculation handler**, awaiting explicit approval. HTTP and frontend remain pending.
+**3.1 — React setup and calculator state management: complete.** Backend reviewed and approved by the user. The frontend scaffold and reducer are implemented; API integration and the final keypad remain pending. Next proposed task: **3.2 — typed API client and request lifecycle connection**, awaiting approval.
 
 Each implementation checkbox is a separate approval boundary. Read AGENTS.md and relevant design documentation, implement only the approved scope, add relevant tests, record actual checks, update documentation/prompt disclosure, then stop. The original 2–4 hour budget remains a scope guide; keypad behavior adds work, and review/toolchain setup time is separate. Do not sacrifice required behavior to meet an estimate.
 
@@ -33,28 +33,43 @@ Each implementation checkbox is a separate approval boundary. Read AGENTS.md and
   - Review: verified one exported function plus four sentinel errors, errors.Is-based tests, no interfaces/dependencies or transport coupling; `go list -f '{{.ImportPath}}: {{join .Imports ", "}}' ./internal/calculator` reported only errors and math. Reviewed operation/operand error precedence, exact signed-zero handling, overflow/underflow, subnormal preservation, and precision cases. Kept two small switches for explicit validation order rather than adding an operation registry/type; documented the defensive result-NaN guard in D007.
   - Files: added internal/calculator/calculator.go and calculator_test.go; updated internal/calculator/doc.go, AGENTS.md, TASKS.md, README.md, docs/DESIGN.md, docs/DECISIONS.md, and AI_PROMPTS.md (verbatim Prompt 003). Coverage reports are generated/ignored. No server or HTTP package code changed.
   - Remaining: no arithmetic blockers. HTTP mapping/handler and frontend remain unimplemented; next task 2.3 requires approval.
-- [ ] **2.3 Implement REST calculation handler.** Depends on 2.2 and approval.
+- [x] **2.3 Implement REST calculation handler.** Approved and completed after 2.2.
   - Acceptance: shared handler wired into local server; existing request/status/error/header contract, full bounded input validation; httptest cases alongside code; README curl examples reflect real behavior.
   - Checks: gofmt/vet/tests, live requests for four operations and failure cases, no external Go dependencies or frontend arithmetic.
 
-## 3. Backend verification
+  - Verification (2026-10-14, Go 1.27.2 darwin/arm64): `gofmt -w internal/httpapi cmd/server` executed; `gofmt -l cmd internal` printed nothing. `go vet ./...`, `go test ./...`, `go test -race ./...`, `go build ./...`, and `go build -o bin/server ./cmd/server` all passed. Initial focused HTTP/server tests also passed.
+  - HTTP tests: 60 request cases, 10 media-type cases, 7 method cases, 6 body-limit cases (4095/4096/4097 bytes with known/unknown length), 5 wrapped-error mappings, and a body-read failure/closure case. Assertions check statuses, JSON structure, safe messages, and response headers. Existing server tests now verify the actual calculation route and 404 behavior, including the trailing slash.
+  - Coverage: `go test -count=1 -coverprofile=coverage/httpapi.out ./internal/httpapi` passed with **96.1% HTTP package statement coverage**. `go tool cover -func=coverage/httpapi.out` inspected the functions; `go tool cover -html=coverage/httpapi.out -o coverage/httpapi.html` generated the report. Uncovered statements: the safe marshal-failure fallback (2) and return after response-write failure (1). Current validated response types cannot trigger the marshal failure; a disconnected-client write failure cannot deliver a replacement response. No artificial cases were added to inflate coverage. This is statement, not branch/whole-backend coverage.
+  - Real curl smoke: launched the compiled bin/server with PORT=61249. Used `curl --silent --show-error --max-time 5 -i -H 'Content-Type: application/json' --data-binary '<body>' http://127.0.0.1:61249/api/calculate`. Observed multiplication 12×5 → 200 `{"result":60}`; division 12/0 → 422 `{"error":{"code":"division_by_zero","message":"Cannot divide by zero."}}`; null a → 400 `{"error":{"code":"invalid_operand","message":"Operand a must be a finite JSON number."}}`. Also verified addition → 200/3.5, subtraction → 200/-3, and division → 200/0.25. JSON/no-store headers checked; server stopped after smoke tests.
+  - Review: existing server reused; no new dependencies/interfaces/middleware; calculator files confirmed unchanged by SHA-256 before/after comparison. RawMessage plus pointer decoding preserves ordered validation and null/zero distinctions. Documented repeated Content-Type (415), read failures (400), and endpoint-only JSON envelope scope in D008.
+  - Files: added internal/httpapi/handler.go and handler_test.go; updated internal/httpapi/doc.go, cmd/server/main.go and main_test.go, AGENTS.md, TASKS.md, README.md, docs/DESIGN.md, docs/DECISIONS.md, and AI_PROMPTS.md (verbatim Prompt 004). Generated HTTP coverage files and rebuilt bin/server are ignored.
+  - Remaining: no task 2.3 blocker. Standard mux 404s and connection/panic failures do not promise the endpoint JSON envelope; graceful draining and frontend remain outside this task. No commit, push, or deployment performed.
 
-- [ ] **3.1 Audit HTTP/numeric edge cases and publish coverage instructions.** Depends on 2.3.
-  - Acceptance: cover the design's contract matrix, size/trailing-data boundaries, missing/null/zero, duplicate/case behavior, overflow/underflow, methods/media types, and unknown routes. Generate text/HTML coverage and review meaningful gaps, with no arbitrary percentage gate.
-  - Checks: go vet, go test -race, coverage commands; record actual results and uncovered limitations.
+- [x] **2.4 Backend review and approval (formerly proposed task 3.1).**
+  - User confirmed that the focused read-only review is complete, with no blocking issues, and approved the backend. The prior review identified only an optional HTTP signed-zero assertion improvement; the core already checks signed zero. No backend changes were requested.
+  - Existing executed backend checks and coverage are recorded under 2.2/2.3. The review did not rerun commands or edit files; do not interpret this approval as a new test execution. The old audit/coverage milestone is closed by the review and those existing verification records.
 
-## 4. React keypad frontend with tests
+## 3. React keypad frontend with tests
 
-- [ ] **4.1 Establish Vite/React/TypeScript and typed API client.** Depends on 3.1.
-  - Acceptance: announce compatible dependencies before installation (React/DOM, TypeScript/Vite/plugin/types, Vitest/RTL/user-event/jest-dom/jsdom/V8 coverage), commit lockfile later, local API proxy, typed response validation, network/error/timeout/cancellation tests. No UI/state/router framework.
-  - Checks: typecheck, build, test run, real proxy request against Go; README two-terminal startup.
-- [ ] **4.2 Implement reducer and polished calculator keypad.** Depends on 4.1.
-  - Acceptance: numeric/expression displays, conventional keypad and required controls, all DESIGN.md transitions, result reuse and left-to-right binary chaining via API, keyboard/a11y/focus, responsive typography/spacing/button states, loading/error feedback. Test transitions and interaction sequences alongside implementation; no JS arithmetic/parser.
-  - Checks: reducer/component/API integration tests, typecheck/build; real-backend keyboard and 320px/desktop smoke, long/scientific results, pending Clear, stale responses, retry and new calculation.
+Task numbers and boundaries below follow the user's latest Task 3.1 instruction, replacing the former 4.1/4.2 split. The former backend-review 3.1 is recorded above as 2.4.
+
+- [x] **3.1 React setup and calculator state management.** Approved after backend review.
+  - Acceptance: minimal React/TypeScript/Vite/Vitest setup; deterministic reducer for digits, decimal/sign editing, operator replacement, Clear/backspace, equals, reuse/new entry, pending/errors/retries/stale results. Emit a binary calculation request intent; never perform arithmetic locally. Meaningful sequence tests. No HTTP client/integration or final visual design; approved Go files unchanged.
+  - Dependencies: React/React DOM 19.3.0; TypeScript 7.0.2; Vite 8.3.4; React plugin 6.1.2; Vitest 5.0.4; React/DOM/Node type declarations. Announced before installation; current registry engines/peers checked against Node 24.21.0 and npm 11.19.0. npm lockfile retained. React Testing Library, jsdom, and coverage tooling deferred until needed.
+  - Verification (2026-10-14): `npm install` succeeded (46 packages added; audit reported zero vulnerabilities). `npm run typecheck` passed; `npm test` passed all **67 reducer tests** in one file; `npm run build` passed TypeScript and Vite production compilation. Tests use Node, no DOM, network, Go process, or arithmetic mock. No frontend coverage percentage is claimed.
+  - Behavior: readonly discriminated states, exact API result reuse, string sign editing, no inferred second operand/repeated equals, pending actions blocked except Clear, monotonic IDs preserved on Clear, stale completions ignored, retry retains chaining intent while editing discards it. Scientific results cannot be corrupted by backspace. Digits that overflow a finite operand are ignored; decimal rounding/underflow follows the agreed number model.
+  - Files created: package.json, package-lock.json, tsconfig.json, vite.config.ts, index.html, src/main.tsx, src/App.tsx, src/calculator.ts, src/calculator.test.ts. Updated: AGENTS.md, TASKS.md, README.md, docs/DESIGN.md, docs/DECISIONS.md, AI_PROMPTS.md. Existing ignore rules already cover node_modules and dist.
+  - Scope: App is an unstyled setup placeholder; reducer has no React/network imports. API proxy/client, effects, AbortController/timeout behavior, keypad, keyboard and browser integration tests remain future tasks. All 9 Go source/test/module files were confirmed unchanged by before/after SHA-256 comparison. npm reported a pre-existing user-config warning for `python`; installation and all checks succeeded, and user configuration was not modified. No commit, push, or deployment. See README for reproducible commands.
+- [ ] **3.2 Typed API client and request lifecycle connection.** Depends on 3.1; requires approval.
+  - Acceptance: typed request/response validation, local Vite proxy, execute reducer intents outside the reducer, safe network/error/timeout/cancellation handling, Clear/unmount cancellation and stale-response protection. No local arithmetic. Add the required testing dependencies when used.
+  - Checks: API/lifecycle tests including malformed responses, retries, cancellation and late responses; typecheck/build; real proxy request against Go; README two-terminal startup.
+- [ ] **3.3 Polished calculator keypad.** Depends on 3.2; requires approval.
+  - Acceptance: numeric/expression displays, conventional keypad and required controls, reducer-driven binary chaining, keyboard/a11y/focus, responsive typography/spacing/button states, loading/error feedback. Test user-visible interaction sequences; no expression parser.
+  - Checks: component/API integration tests, typecheck/build; real-backend keyboard and 320px/desktop smoke, long/scientific results, pending Clear, stale responses, retry and new calculation.
 
 ## 5. Frontend verification
 
-- [ ] **5.1 Audit behavior and generate reports.** Depends on 4.2.
+- [ ] **5.1 Audit behavior and generate reports.** Depends on 3.3.
   - Acceptance: meaningful coverage of keypad sequences, state transitions, API integration, keyboard input, async/error handling; text/HTML/LCOV reports and documented exclusions; fix regressions. No percentage gate.
   - Checks: full frontend suite, typecheck/build, real API/browser smoke; record remaining gaps honestly.
 

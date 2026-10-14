@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -43,18 +44,31 @@ func TestNewServerPort(t *testing.T) {
 	}
 }
 
-func TestScaffoldHasNoRoutes(t *testing.T) {
+func TestServerRoutes(t *testing.T) {
 	server, err := newServer("")
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"/", "/api/calculate", "/unknown"} {
-		t.Run(path, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodPost, path, nil)
+	tests := []struct {
+		path   string
+		status int
+	}{
+		{path: "/api/calculate", status: http.StatusOK},
+		{path: "/api/calculate/", status: http.StatusNotFound},
+		{path: "/api/unknown", status: http.StatusNotFound},
+		{path: "/", status: http.StatusNotFound},
+	}
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, tt.path, strings.NewReader(`{"operation":"multiply","a":12,"b":5}`))
+			request.Header.Set("Content-Type", "application/json")
 			response := httptest.NewRecorder()
 			server.Handler.ServeHTTP(response, request)
-			if response.Code != http.StatusNotFound {
-				t.Errorf("status = %d, want 404 for unimplemented route", response.Code)
+			if response.Code != tt.status {
+				t.Errorf("status = %d, want %d", response.Code, tt.status)
+			}
+			if tt.status == http.StatusOK && response.Body.String() != "{\"result\":60}\n" {
+				t.Errorf("unexpected result: %s", response.Body.String())
 			}
 		})
 	}

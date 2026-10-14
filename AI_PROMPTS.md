@@ -1,6 +1,6 @@
 # AI usage disclosure and prompt log
 
-AI assistance: OpenAI Codex assisted with environment inspection, official documentation research, planning and its revision, the backend setup task, and the calculator core. Implementation and executed verification are recorded in TASKS.md; the calculation handler and frontend remain pending.
+AI assistance: OpenAI Codex assisted with environment inspection, official documentation research, planning and its revision, the backend setup task, calculator core, REST API, read-only backend review, and frontend setup/reducer. Implementation and executed verification are recorded in TASKS.md; the frontend API connection and keypad remain pending.
 
 Scope: this log preserves the initial user-supplied project prompt and subsequent user prompts below verbatim. It is not a complete transcript of system/developer instructions, tool calls, or assistant messages, and does not claim to include all interactions. Append subsequent user prompts chronologically, exactly as supplied, with related task IDs where practical; explicitly label any unavailable material rather than reconstructing it.
 
@@ -288,4 +288,289 @@ After implementation:
 6. Explain the public API, important Go-specific design decisions, and test results.
 
 Stop after completing Task 2.2. Do not automatically proceed to the HTTP API implementation.
+````
+
+## 2026-10-14 — Prompt 004 — Task 2.3: REST calculation API
+
+Source: user message, copied verbatim. The enclosing fence is not part of the prompt.
+
+````text
+Proceed with Task 2.3 — REST Calculation API.
+
+Task 2.2 is complete. The calculator package exposes:
+
+`Calculate(operation string, a, b float64) (float64, error)`
+
+It supports four operations and exposes sentinel errors for unsupported operations, non-finite operands, division by zero, and non-finite results.
+
+## Before implementation
+
+1. Read AGENTS.md, TASKS.md, docs/DESIGN.md, docs/DECISIONS.md, and the current calculator implementation.
+2. Follow the existing API contract and architectural decisions.
+3. Review the existing server scaffold and reuse it rather than introducing a parallel server architecture.
+4. Do not modify the calculator core unless you identify a concrete defect. Explain any necessary change.
+
+## Implementation
+
+Implement `POST /api/calculate` using Go's standard library.
+
+Request:
+```json
+{
+  "operation": "multiply",
+  "a": 12,
+  "b": 5
+}
+```
+
+Successful response (HTTP 200):
+```json
+{
+  "result": 60
+}
+```
+
+Error response:
+```json
+{
+  "error": {
+    "code": "division_by_zero",
+    "message": "Cannot divide by zero."
+  }
+}
+```
+
+### Requirements
+
+- Use `net/http` and `encoding/json`.
+- Keep HTTP concerns inside `internal/httpapi`.
+- Keep arithmetic inside `internal/calculator`.
+- Wire the handler into the existing server.
+- Accept only POST requests.
+- Validate Content-Type.
+- Reject malformed JSON and multiple JSON values.
+- Reject unknown fields.
+- Distinguish missing or null operands from valid zero values.
+- Validate supported operations.
+- Enforce the previously agreed 4 KiB request body limit.
+- Map calculator sentinel errors using `errors.Is`.
+- Return consistent JSON error codes and meaningful HTTP statuses.
+- Handle non-finite results without attempting to serialize invalid JSON numbers.
+- Return appropriate response headers.
+- Do not expose internal implementation details in error responses.
+- Avoid unnecessary interfaces, middleware, frameworks, or dependencies.
+
+Follow the error codes and status mappings documented in DESIGN.md. If you discover an ambiguity or inconsistency, explain it and choose the simplest defensible behavior.
+
+### Go engineering quality
+
+Prioritize idiomatic Go practices:
+
+- Simple handler functions and minimal exported APIs.
+- Explicit error handling.
+- Correct request body handling.
+- No unnecessary abstraction layers.
+- No duplicated business logic.
+- Clear package boundaries.
+- Readable code over clever code.
+
+Do not add custom infrastructure for hypothetical future requirements.
+
+## Tests
+
+Add table-driven HTTP handler tests using `net/http/httptest`.
+
+Cover at least:
+
+- All four operations.
+- Decimal, negative, and zero operands.
+- Division by zero.
+- Unsupported operation.
+- Missing and null operands.
+- Invalid operand types.
+- Malformed and empty JSON.
+- Unknown fields.
+- Multiple JSON objects.
+- Missing or invalid Content-Type.
+- Unsupported HTTP methods.
+- Request body size boundaries.
+- Non-finite arithmetic results.
+- Correct status codes and JSON response structure.
+
+Also verify that the real local server routes requests correctly.
+
+Keep tests deterministic and independent of external services.
+
+## Verification
+
+Run:
+
+- `gofmt`
+- `go vet ./...`
+- `go test ./...`
+- `go test -race ./...`
+- `go build ./...`
+
+Generate an HTTP package coverage report and inspect uncovered meaningful branches. Do not add artificial tests just to reach a particular coverage percentage.
+
+Run a real HTTP smoke test against the local server using curl, including:
+
+1. Successful multiplication
+2. Division by zero
+3. Invalid request
+
+Report the observed HTTP status codes and responses.
+
+## Documentation and task management
+
+- Update TASKS.md and mark Task 2.3 complete only if its acceptance criteria pass.
+- Update README.md with local server instructions and real curl examples.
+- Update design documentation only if decisions or behavior change.
+- Log this prompt in AI_PROMPTS.md.
+- Do not commit or push changes automatically.
+
+## Final report
+
+Summarize:
+
+1. Files modified or created.
+2. API behavior and error handling.
+3. Verification commands and actual results.
+4. HTTP package test coverage.
+5. Any remaining limitations.
+6. Any Go-specific design choices worth understanding.
+7. The next proposed task.
+
+Stop after Task 2.3. Do not start frontend implementation without approval.
+````
+
+## 2026-10-14 — Prompt 005 — Backend read-only review
+
+Source: user message, supplied twice with identical text. Recorded once here during the later authorized documentation update; no files were changed during the read-only review.
+
+````text
+Perform a focused, read-only code review of the completed Go backend.
+
+Read the implementation, tests, AGENTS.md, TASKS.md, and design decisions.
+
+Evaluate:
+
+1. Idiomatic Go practices and package structure.
+2. Correctness of HTTP parsing, validation, and error mapping.
+3. Simplicity and maintainability.
+4. Any unnecessary abstractions or defensive complexity.
+5. Real bugs, missing edge cases, and misleading tests.
+6. Whether the backend satisfies Sezzle's take-home requirements.
+
+Classify findings as:
+
+- Must fix before submission
+- Worth improving
+- Optional / stylistic
+
+Reference exact file paths and line numbers.
+
+Do not modify any files. Do not add tests or features.
+
+If the implementation is already sufficient, explicitly say so rather than inventing improvements.
+
+Keep the review proportional to a 2–4 hour take-home assignment.
+````
+
+## 2026-10-14 — Prompt 006 — Task 3.1: React setup and calculator state management
+
+Source: user message, copied verbatim. The enclosing Markdown fence is not part of the prompt.
+
+````text
+The backend code review is complete. No blocking issues were identified. Treat the backend as approved and proceed with the first frontend implementation task.
+
+Before starting, read AGENTS.md, TASKS.md, docs/DESIGN.md, docs/DECISIONS.md, and the current backend API contract.
+
+## Task 3.1 — React setup and calculator state management
+
+Set up the frontend using:
+
+- React
+- TypeScript
+- Vite
+- Vitest
+
+Keep dependencies minimal and follow idiomatic React and TypeScript practices.
+
+The frontend will be a polished traditional calculator with a numeric keypad, not a two-operand form.
+
+### Implement the calculator state machine
+
+Use a pure reducer or equivalent testable state transition function.
+
+Support:
+
+- Digit entry (0–9)
+- Decimal entry
+- Negative number toggle
+- Operator selection: +, −, ×, ÷
+- Replacing an operator before entering the second operand
+- Clear
+- Backspace
+- Equals
+- Reusing a previous result
+- Starting a new calculation after a completed result
+
+Important design rule:\
+The frontend must NEVER perform arithmetic calculations. All actual addition, subtraction, multiplication, and division must happen through the Go API.
+
+Design the reducer so that pressing equals produces a calculation request intent containing the operation and two operands. API execution will be connected in the next task.
+
+Define behavior for edge cases clearly, including:
+
+- Repeated decimal points
+- Leading zeros
+- Empty operands
+- Operator changes
+- Repeated equals
+- Editing after a result
+- Pending calculations
+- Error recovery
+
+Avoid a general expression parser, operator precedence engine, or unnecessary state management libraries.
+
+### Testing
+
+Write focused unit tests for the reducer covering normal and edge-case input sequences.
+
+Ensure the reducer is deterministic and has no network dependencies.
+
+### Scope restrictions
+
+Do not implement the final visual design or HTTP API integration in this task.
+
+Do not modify the approved Go backend unless you discover a blocking integration problem.
+
+### Verification
+
+Run:
+
+- TypeScript type checking
+- Vitest reducer tests
+- Frontend production build
+
+### Documentation and workflow
+
+- Update TASKS.md and relevant design documentation.
+- Log this prompt in AI_PROMPTS.md.
+- Follow the existing AGENTS.md instructions.
+- Do not commit or push automatically.
+
+### Final report
+
+Summarize:
+
+1. Files created and changed.
+2. Reducer state model and supported transitions.
+3. Important UX decisions.
+4. Test results.
+5. Any remaining issues.
+6. Next proposed task.
+
+Stop after Task 3.1 and wait for approval.
 ````

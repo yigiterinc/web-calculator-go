@@ -1,2 +1,2 @@
-// Package httpapi will contain the calculator's HTTP transport and validation.
+// Package httpapi provides the calculator's HTTP transport and validation.
 package httpapi

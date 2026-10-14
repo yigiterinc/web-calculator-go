@@ -7,6 +7,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"sezzle-calculator/internal/httpapi"
 )
 
 func main() {
@@ -32,7 +34,7 @@ func newServer(port string) (*http.Server, error) {
 
 	return &http.Server{
 		Addr:              ":" + strconv.Itoa(number),
-		Handler:           http.NewServeMux(),
+		Handler:           httpapi.NewHandler(),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
