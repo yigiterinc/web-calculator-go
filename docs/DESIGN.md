@@ -1,65 +1,34 @@
-# Calculator design
+# Technical design
 
-Status: backend architecture and API policy accepted; frontend/deployment decisions revised per user review on 2026-10-14. The backend is implemented, reviewed, and approved. Task 3.1 implements the React setup and pure calculator reducer; task 3.2 connects the API and implements the responsive keypad and keyboard controls.
+The implemented application has a Go API, a React keypad and an optional verified Docker runtime. Arithmetic is exclusively backend-owned; hosting outside Docker remains unconfigured.
 
-## Initial environment evidence (planning snapshot)
-
-- Workspace was empty, including hidden files; no existing source, instructions, or design docs were present.
-- `git status --short --branch` reported that this directory is not a Git repository. No remote or public repository has been established.
-- `node --version`: v24.21.0; `npm --version`: 11.19.0; `git --version`: 2.38.1.
-- `go version`: command not found. Go and Vercel CLI were absent from PATH; standard Go installation locations were also checked without finding a binary. This is not an exhaustive filesystem search.
-- At initial planning, no dependencies were installed or builds/tests run. Current setup and verification are recorded in README.md and TASKS.md.
-
-## Agreed structure and flow
-
-Implemented layout (DOM test environment/matchers are configured directly in App.test.tsx):
+## Architecture
 
 ```text
-sezzle-calculator/
-├── go.mod                         # one Go module
-├── cmd/server/main.go             # local HTTP server, PORT default 8080
-├── internal/
-│   ├── calculator/                # arithmetic and table-driven unit tests
-│   └── httpapi/                   # shared handler and httptest tests
-├── package.json / package-lock.json
-├── index.html
-├── vite.config.ts / tsconfig*.json
-├── src/
-│   ├── main.tsx
-│   ├── App.tsx / App.test.tsx
-│   ├── calculator.ts / calculator.test.ts # reducer and transitions
-│   ├── api.ts / api.test.ts        # fetch and response validation
-│   ├── styles.css
-│   └── vite-env.d.ts
-├── Dockerfile / .dockerignore
-├── .gitignore
-├── README.md / AGENTS.md / TASKS.md / AI_PROMPTS.md
-└── docs/
-    ├── DESIGN.md
-    └── DECISIONS.md
+cmd/server/           Process configuration, startup and HTTP timeouts
+internal/calculator/  Stateless arithmetic and numeric validation
+internal/httpapi/     API parsing, responses and optional static routing
+src/App.tsx           Keypad, display, keyboard events and request effect
+src/calculator.ts     Pure calculator reducer and request intents
+src/api.ts            Typed HTTP client, validation, timeout and cancellation
+src/styles.css        Responsive layout and interaction states
+Dockerfile            Frontend build, Go build and minimal runtime
 ```
 
-React calls relative `/api/calculate`. Vite proxies `/api` to the Go server on localhost:8080 in development. The local executable composes the `httpapi` handler, which calls `calculator`. The arithmetic package has no HTTP or hosting dependencies. Docker optionally provides same-origin UI/API serving in one Go process; external hosting is optional and undecided. Relative API URLs work in both modes without coupling business logic to a provider. No database, router library, CORS middleware, client router, state library, or npm workspace tooling is needed.
-
-Go-specific rationale: `cmd/server` holds the executable; `internal` restricts external imports of implementation packages. Plain functions and explicit returned errors fit this small service; interfaces add no useful seam here. Request operand pointers distinguish missing/null input from valid zero. These conventions follow [Go module layout guidance](https://go.dev/doc/modules/layout).
+Go uses only its standard library. Internal packages remain private to the module tree; no framework, custom service interface, persistence or dependency injection layer is needed.
+Normal development uses Vite's /api proxy to localhost:8080. Docker serves page/assets/API from the same Go process and origin, so relative client URLs work without CORS configuration.
+main owns environment access and listening; a testable constructor validates PORT and optional STATIC_DIR. Header/read/write/idle timeouts are 5/10/10/60 seconds.
 
 ## API contract
 
-One endpoint: `POST /api/calculate`, with `Content-Type: application/json` (optional charset parameter accepted). Body limit: 4,096 bytes. No authentication or persisted data.
+POST /api/calculate requires Content-Type: application/json (parameters such as charset=utf-8 are accepted) and exactly one JSON object. The full body limit is 4,096 bytes, including trailing whitespace.
 
 ```json
-{"operation":"add","a":1.5,"b":2}
+{"operation":"multiply","a":12,"b":5}
 ```
 
-Required fields: `operation` is exactly one of `add`, `subtract`, `multiply`, `divide`; `a` and `b` are finite JSON numbers. Zero and negative values are valid. Strings, booleans, arrays, missing/null fields, and unknown fields are rejected. There must be exactly one top-level JSON object; trailing whitespace is allowed, additional values or junk are rejected.
-
-Success: HTTP 200 with `Content-Type: application/json` and:
-
-```json
-{"result":3.5}
-```
-
-Application error envelope (machine-readable code, safe human-readable message):
+Supported operation names are exactly add, subtract, multiply and divide. Operands must be present, non-null finite JSON numbers; zero is valid. Unknown fields, malformed input and additional JSON values are rejected.
+HTTP 200 returns {"result":60}. Errors have one consistent envelope:
 
 ```json
 {"error":{"code":"division_by_zero","message":"Cannot divide by zero."}}
@@ -67,111 +36,71 @@ Application error envelope (machine-readable code, safe human-readable message):
 
 | Status | Code | Condition |
 | --- | --- | --- |
-| 400 | `invalid_json` | Empty/malformed JSON, wrong top-level type, unknown field, multiple JSON values, trailing junk |
-| 400 | `invalid_operand` | Missing/null/wrong-type operand, or numeric literal outside float64 range |
-| 400 | `invalid_operation` | Missing/null/wrong-type or unsupported operation |
-| 405 | `method_not_allowed` | Any non-POST method on this endpoint; include `Allow: POST` |
-| 413 | `payload_too_large` | Body exceeds 4,096 bytes, including trailing whitespace |
-| 415 | `unsupported_media_type` | Missing, malformed, repeated, or non-JSON Content-Type |
-| 422 | `division_by_zero` | Divisor equals positive or negative zero |
-| 422 | `result_out_of_range` | Finite operands produce a non-finite result |
-| 500 | `internal_error` | Unexpected returned error or serialization failure; no internal details in response |
+| 400 | invalid_json | Empty/malformed/non-object JSON, unknown fields, trailing values/junk or body-read failure |
+| 400 | invalid_operand | Missing/null/wrong-type operand or literal outside float64 range |
+| 400 | invalid_operation | Missing/null/wrong-type or unsupported operation |
+| 405 | method_not_allowed | Non-POST method; Allow: POST |
+| 413 | payload_too_large | Full body exceeds 4,096 bytes |
+| 415 | unsupported_media_type | Missing, malformed, repeated or non-JSON Content-Type |
+| 422 | division_by_zero | Positive or negative zero divisor |
+| 422 | result_out_of_range | Arithmetic yields a non-finite result |
+| 500 | internal_error | Unexpected returned error or serialization failure; diagnostics withheld |
 
-Check method, then media type, then read the size-limited body, then validate JSON structure and fields, then calculate. For multiple field errors, validate operation, a, then b. Bound the entire read before decoding so oversized trailing bytes cannot bypass the limit. All responses generated by the calculation endpoint use `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`; standard mux 404 responses are outside this envelope. Encode responses before writing success headers so serialization failures cannot leave a partial success response. HEAD responses carry no body per HTTP semantics.
+Validation order is method, media type, bounded full read, JSON structure, operation, a, then b. RawMessage preserves ordered field validation; pointer decoding distinguishes missing/null operands from zero.
+DisallowUnknownFields and an EOF check enforce the object boundary. Standard encoding/json tolerance remains intentional: field matching is case-insensitive and the last recognized duplicate value wins.
+Calculator errors are mapped with errors.Is. Responses are marshaled before headers commit, avoiding a false successful status if serialization fails.
+Endpoint responses use application/json, Cache-Control: no-store and X-Content-Type-Options: nosniff. HEAD returns 405 without a body; unknown paths and /api/calculate/ return standard 404s outside the JSON envelope.
+Connection failures and unexpected panics are governed by net/http; no custom recovery middleware promises an envelope for them.
 
-Use stable `encoding/json` behavior rather than an additional JSON library: field matching is case-insensitive and duplicate recognized fields use their last value. Clients must send the canonical names above; test and document this accepted tolerance. Unknown fields still fail. This avoids writing a custom parser for this exercise. See the [standard decoder documentation](https://pkg.go.dev/encoding/json). Request validation must not silently accept missing or null numbers as zero.
+## Numeric policy
 
-Implementation details clarified in task 2.3: reject repeated Content-Type headers with 415; request read failures use 400/invalid_json without leaking the underlying error. Decode fields into json.RawMessage before validating their types in contract order, so the last duplicate value wins even when an earlier value has a different type. Validate the operation enum before operand parsing; all arithmetic and numeric-result checks remain in calculator. The HTTP package exports only NewHandler(frontend fs.FS) http.Handler; nil preserves API-only mode. Dockerization adds optional static routes as described below. Its route is registered without a method qualifier so custom JSON 405 responses can include Allow: POST. Response encoding happens before headers are committed. There is no added panic-recovery middleware: net/http still governs unexpected panics and broken connections, so these do not promise an application JSON envelope.
+Calculate(operation string, a, b float64) (float64, error) is stateless and independent of HTTP. Operation validation precedes finite-operand checks; subtraction/division preserve operand order.
+Four sentinel errors distinguish unsupported operations, non-finite operands, zero division and non-finite results. Callers classify with errors.Is rather than message matching.
+Go float64 matches JavaScript's binary number model. Decimal rounding, integer precision beyond 2^53 and underflow are accepted; there is no decimal dependency or implicit rounding.
+Division rejects either sign of exact zero, without an epsilon that would reject small valid divisors. Non-finite results never reach JSON serialization. Zero results normalize to positive zero.
+API result display uses normal number-to-string conversion, preserving returned precision and scientific notation.
 
-The local server returns 404 for unknown API paths. Platform-generated 404s, gateway failures, and timeouts may not follow our error envelope; the frontend must tolerate non-JSON responses. Do not redirect `/api/calculate/` into the endpoint or add a catch-all SPA rewrite. Only `/` needs a frontend page.
+## Explicit state model
 
-## Arithmetic policy and edge cases
+The pure reducer uses readonly discriminated states; editable numbers remain text, while results retain the API's numeric value. Network effects and timestamps are excluded from transitions.
 
-Accepted numeric type: Go `float64`, matching JavaScript's binary floating-point number model. This is a general-purpose calculator; exact decimal arithmetic is not a requirement assumed from the company's industry.
-
-- All four operations; subtraction/division preserve operand order.
-- Zero, negatives, fractions, exponent notation, very small and very large finite operands.
-- Reject division by both signs of zero; do not use an epsilon test that rejects legitimate tiny divisors.
-- Reject non-finite operands in the core even though normal JSON cannot encode NaN/Infinity. Reject non-finite results before JSON encoding.
-- Binary rounding is expected (`0.1 + 0.2` may produce `0.30000000000000004`); integers beyond 2^53 are not guaranteed exact. Underflow may round to zero. Do not claim arbitrary precision.
-- Normalize a zero result to positive zero for consistent display. Do not silently round other results to a fixed number of decimal places; render the returned number with normal number-to-string formatting, including scientific notation when needed.
-
-### Implemented core API (task 2.2)
-
-`calculator.Calculate(operation string, a, b float64) (float64, error)` accepts exactly `add`, `subtract`, `multiply`, or `divide`. It validates operation before operands, rejects non-finite operands, then checks division by signed zero and non-finite results. Every error returns zero plus one of four errors: `ErrUnsupportedOperation`, `ErrNonFiniteOperand`, `ErrDivisionByZero`, or `ErrNonFiniteResult`. Callers use `errors.Is`; HTTP error codes/statuses remain the transport layer's responsibility.
-
-The core is stateless and imports only errors and math. Tests use the external calculator_test package to exercise the public API, with exact expected float64 values (including deliberately rounded decimal examples) and explicit signed-zero assertions. There is no tolerance that could hide subnormal-value regressions. This implements the numeric policy above without changing the REST contract.
-
-## Frontend interaction model
-
-Use React, TypeScript, Vite, and plain CSS for a traditional calculator, with a prominent numeric display, a smaller operation/expression line, and a conventional four-column keypad. Controls include 0–9, decimal, ±, clear, backspace, +, −, ×, ÷, and equals. A minimal professional design should use restrained colors, tabular digits, deliberate spacing/type hierarchy, distinct operator/equals emphasis, and clear hover/pressed/focus/disabled states. Keep touch targets at least 44px, fit a 320px viewport, and accommodate long/scientific results without losing their value. Do not truncate or round the stored API result.
-
-Use native buttons with accessible names for symbols, visible focus, and logical DOM/tab order. Announce pending/result updates politely and errors through an alert. The expression line is a readable binary operation, not an editable expression or parser. History, memory, percentages, and general precedence are out of scope.
-
-### Explicit state model
-
-Use a small reducer with discriminated states: `firstEntry`, `operatorSelected`, `secondEntry`, `pending`, `result`, and `error`. Keep editable digits as strings and completed results as the API's numeric value; derive result display text with String(value) rather than storing a second copy. Store only the current left operand, selected operator, active entry, and (while pending/error) submitted operands and any next-operator intent. Do not maintain a second expression evaluator. Network effects live outside the pure reducer; user events and request completion events drive transitions.
-
-| State/event | Behavior |
+| State | Responsibility |
 | --- | --- |
-| Initial / Clear | First entry is `0`; no operator, result, or error. Clear invalidates pending work; effect cleanup aborts it. |
-| Digits during entry | Replace leading `0` (preserve a toggled minus), otherwise append. Digits after result start a fresh first operand. Ignore a digit that would overflow the finite number range; ordinary binary rounding/underflow remains accepted. |
-| Decimal | Start with `0.` if needed; append only if the active entry lacks a decimal. A second decimal is ignored. After result, start a fresh `0.`. |
-| ± | Toggle the leading sign of the editable operand as text, including `-0`. After operator selection, start second entry at `-0`. After result, enter its displayed value with the sign toggled as a new first operand. This is input editing, not client-side evaluation. |
-| First entry + operator | Store the finite operand and operator; await the second operand. No request yet. |
-| Operator while awaiting second operand | Replace the selected operator; do not calculate. |
-| Digit/decimal after operator | Start the second operand, replacing the previous display. |
-| Equals with second operand | Submit exactly one binary calculation. A trailing decimal is a valid completed number. |
-| Equals without a second operand / after result | No-op; do not invent a right operand or repeat the previous operation. |
-| Operator after second entry | Submit the current binary pair; remember the newly chosen operator. On success, use the result as the next left operand and await second entry. This permits left-to-right chaining, without precedence. |
-| Operator after result | Reuse the exact API number as the left operand; await the next operand. |
-| Backspace while entering | Remove one character; empty or minus-only becomes `0`. After operator selection/result, no-op. Do not character-edit scientific notation returned by the API; a digit/decimal starts a fresh entry instead. This also applies after sign-toggling a result in exponent notation: digit/decimal starts fresh and drops the old sign; another sign toggle still edits only the leading sign. Sign-toggled non-exponent result text remains editable. |
-| Pending | Show loading, block arithmetic/edit actions and duplicate submission; Clear stays available. |
-| Successful response | Show the result and completed binary expression, or enter operatorSelected when chaining was requested. Never compute the answer locally. |
-| Failure | Preserve the submitted pair and show a safe error. Equals retries that pair with its saved continuation intent; digit/decimal begins a replacement second operand; backspace/± resumes editing the second operand; operator replaces the failed pair's operator without submitting and retains the right operand. Clear resets everything. |
+| firstEntry | Edit the initial operand, starting at 0 |
+| operatorSelected | Save the left operand/operator; no second operand yet |
+| secondEntry | Edit the right operand |
+| pending | Hold the submitted pair, ID and optional next operator |
+| result | Retain the returned number and completed pair |
+| error | Retain the failed submission and safe feedback for retry/editing |
 
-Example: `2 + 3 × 4 =` makes two API requests, `(2 + 3)` then `(returned result × 4)`. `5 + × 2 =` submits only multiplication. `2 + =` waits for a second operand; `2 + 3 = =` makes only one request. These transition choices must be tested explicitly.
+Digits collapse leading integer zeros and preserve fractional zeros. Repeated decimals are ignored; sign toggle edits the leading sign. Digits that would overflow a finite operand are ignored.
+Selecting an operator before second entry replaces it. Equals submits only after a second operand exists; empty equals and repeated equals after a result are no-ops.
+An operator after a result reuses it; a digit/decimal starts fresh. An operator after second entry submits that pair and remembers the next operator for left-to-right chaining, without precedence.
+Backspace removes one character during ordinary entry; empty/minus-only becomes 0. It is a no-op after a result/operator selection or for scientific notation; digit/decimal starts fresh when editing scientific result text.
+Sign toggle after a result starts a first entry from its displayed value with the sign changed. There is no client-side answer calculation.
+Error equals retries the saved pair and continuation. Digit/decimal replaces the right operand; Backspace/sign resumes editing; operator replaces the failed operator while keeping its right operand. Editing discards the saved continuation.
+Clear resets entry/error/result and preserves the request counter. Pending input is blocked except Clear, preventing duplicate submissions.
 
-Implemented task 3.1 boundary: `src/calculator.ts` exposes a pure `calculatorReducer(state, action)` and `initialState`, with readonly discriminated unions. `pending.submission` contains `id`, the wire-ready `request` (`operation`, `a`, `b`), `rightEntry` for lossless retry/editing, and nullable `nextOperation` for chaining. The result state retains the completed request for the expression display. Each submission advances a state-owned counter; Clear preserves it, and completion events are accepted only for the current pending ID. No time, random ID, mutable global counter, React effect, or network work exists in the reducer. Non-finite completion values become a retryable safe error.
+## Async lifecycle and interface
 
-There is no empty editable operand: initial/Clear/backspace-to-empty becomes `0`. `operatorSelected` alone represents an absent second operand; explicitly pressing `0`, decimal, or ± begins one. Repeated decimals are ignored, leading integer zeros collapse, fractional zeros are preserved, and sign toggling preserves `-0` until transport/backend normalization. Retrying an error keeps its continuation; editing the failed pair drops that continuation so equals only submits the edited binary pair. Failed operator replacement retains the right operand and does not submit until the next equals/operator event.
+Equals/chaining produces a submission intent containing operation, a, b and a deterministic monotonic ID. App's effect depends on that stable submission, so blocked input cannot restart it.
+The effect uses AbortController and dispatches completion with the ID. Clear/unmount aborts its work; aborted completions are ignored. The reducer independently rejects completions that do not match the active pending ID.
+The client combines caller cancellation with a 10-second timeout covering fetch and body reading. It accepts only HTTP 200 JSON with a finite result; known error codes map to local messages and other failures use safe fallback feedback.
+Caller cancellation is silent; timeout/network/API failures remain retryable. Cancellation prevents stale UI updates but cannot guarantee the server has not already finished arithmetic.
+Native buttons provide accessible names and focus states; aria-disabled plus click/reducer guards preserves focus while pending. Results/loading are polite live updates; errors use alerts.
+Keyboard handling is scoped to the focused calculator and preserves Tab, browser modifiers and native Enter/Space button activation. The keypad supports touch, reduced motion and long results without truncation.
 
-Task 3.2 implements the keypad and request effect in App.tsx, preserving the reducer unchanged. src/api.ts POSTs the wire-ready request to the relative endpoint, validates HTTP status/media type/finite numeric success, maps known error codes to local messages, and hides raw bodies. A 10-second AbortController timeout covers both headers and body reading. The App effect owns cancellation on Clear/unmount and ignores aborted completions; reducer IDs provide independent protection against stale completion events. The effect depends on the stable pending submission, so blocked input cannot resend it.
+## Docker runtime
 
-The panel uses a warm neutral background, dark green display, muted operator keys, and a strong equals key, with system fonts and plain CSS. Native buttons have accessible names, operator pressed state, focus rings and 55px minimum CSS height (59px measured at the tested 320px layout). `aria-disabled` plus click/reducer guards blocks pending keys while retaining focus. The live result and loading text announce updates; errors are alerts. Long values wrap without truncation or numerical rounding. Reduced-motion preferences disable button transitions. No icon/font network dependency is used.
+Node 24.21.0-alpine3.23 runs npm ci/build; Go 1.27.2-alpine3.23 builds a CGO-disabled executable. Scratch contains only /server and built /web assets, running as UID/GID 65532 on port 8080.
+STATIC_DIR enables os.DirFS after index.html validation. NewHandler(frontend fs.FS) accepts nil for API-only mode; otherwise exact GET/HEAD / and GET/HEAD /assets/ routes use net/http static serving.
+There is no catch-all SPA fallback: unknown API/page paths and missing assets do not return index.html. Static output must be trusted build output. No reverse proxy, runtime Node or Compose is required.
+The image is verified on Linux ARM64. Scratch has no shell; external TLS/hosting and graceful draining are not implemented.
 
-The panel receives initial focus and handles keyboard events locally. Native button Enter/Space activation remains intact; supported calculator shortcuts prevent browser defaults, while modifier shortcuts, composition, Tab, and unrelated interactive controls pass through. React tests run in jsdom under StrictMode and mock fetch; original reducer tests remain unchanged and use Node with explicitly supplied responses.
+## Testing strategy
 
-Keyboard mapping within the focused calculator: digits, `.`, `+`, `-`, `*`, `/`, Enter or `=` for equals, Backspace, Escape/Delete for Clear, and F9 for sign toggle (also always available as a button). Document shortcuts accessibly. Preserve Tab/Shift+Tab and native Space/Enter activation on focused buttons; avoid handling a native button activation twice. Do not capture browser shortcuts or keys in unrelated inputs. Minus selects subtraction; ±/F9 edits the operand's sign.
-
-Only parse finite operands for transport and edit their text on the client. All addition, subtraction, multiplication, division, and chained answers come from Go. Backend validation remains authoritative. Results in exponent notation may be reused unchanged; the keypad does not need exponent-entry keys.
-
-The implemented reducer uses a monotonically increasing request identity. The App effect and API client use AbortController for cancellation and timeout handling. Accept completion only for the currently pending identity. Clear invalidates the identity before aborting, so late successes and failures cannot restore cleared state; unmount cancels silently. A 10-second timeout enters a retryable error state. Network errors, malformed success payloads, and non-JSON server responses must produce safe errors. Do not render raw server response bodies.
-
-## Tests and coverage
-
-Tests accompany each implementation task. Later verification tasks close gaps and produce reports; they are not an excuse to defer tests.
-
-- Go core: table-driven tests for every operation and the numeric edge cases above, including direct NaN/Infinity calls, overflow, underflow, signed zero, and precision-sensitive results. Use explicit expected errors; floating comparisons use justified tolerances where needed.
-- HTTP: `httptest` covers the full contract matrix, exact/over body-size boundary, charset headers, trailing bytes, missing versus zero, duplicate/case-tolerant fields, status/header/envelope consistency, and local server route behavior. Add an unexpected-error/recovery test if a recovery boundary is implemented.
-- Frontend: Vitest + React Testing Library + user-event in jsdom. Test reducer transitions and user-visible keypad sequences, all operation payloads, operator replacement/chaining, decimals/sign/backspace, result reuse/new entry, keyboard input, pending/duplicate prevention, Clear and late response handling, success, retry/error recovery, timeout, network failure, and invalid response shapes. Mock fetch at the network boundary; do not replicate arithmetic in JavaScript tests.
-- Go commands planned: `gofmt -l .`, `go vet ./...`, `go test -race ./...`, `go test ./... -coverprofile=coverage.out`, `go tool cover -func=coverage.out`, and `go tool cover -html=coverage.out -o coverage.html`. Report race-detector/toolchain limitations if encountered.
-- Frontend scripts planned: `npm run typecheck`, `npm run build`, `npm run test:coverage` (Vitest run with V8 coverage). Produce text, HTML, and LCOV reports. Include all handwritten `src` TS/TSX files even if not imported by tests; exclude tests/setup and the mounting-only `main.tsx` with that exclusion documented.
-- No arbitrary coverage thresholds. Required behavior and edge-case assertions determine completion; use reports to identify meaningful gaps. Go reports statement coverage, not branch coverage. Document exclusions and uncovered startup/error paths honestly; do not equate high percentages with correctness.
-- Review uncovered paths, not just percentages. Browser smoke tests use the real Go server through Vite, and a deployed preview only if optional deployment is approved; mocked fetch tests alone cannot verify integration. Automated end-to-end infrastructure is optional and excluded from the initial time budget.
-
-Vitest's [coverage documentation](https://vitest.dev/guide/coverage.html) supports the proposed V8 provider; keep its package version aligned with Vitest. Generated reports/build output stay out of Git; document reproducible commands and observed results instead.
-
-## Optional Docker runtime
-
-The approved Dockerization deliverable uses Node 24.21.0-alpine3.23 for npm ci/build, Go 1.27.2-alpine3.23 for a CGO-disabled executable, and scratch for the non-root runtime. Only the executable and built assets are copied into the final image. No Node, Go toolchain, proxy, shell or extra runtime library is included.
-
-main reads optional STATIC_DIR and validates index.html before constructing an os.DirFS. httpapi owns static HTTP routing: exact GET/HEAD root and GET/HEAD asset subtree, using net/http's standard serving functions. The calculation route and validation remain unchanged. No catch-all SPA fallback exists, so API misses cannot return frontend HTML. Local API-only mode remains the default; Docker sets STATIC_DIR=/web and PORT=8080. Tests cover enabled/disabled serving, missing files, methods, startup validation and API route/error preservation.
-
-## Optional deployment
-
-Deployment is an optional final milestone after the required implementation, documentation, and public repository. No Vercel function adapter, provider configuration, hosting dependency, or production topology is part of the initial architecture. The standard Go executable must run locally on its own. If deployment is approved later, select the platform and verify its current runtime, routing, build, and account requirements then. Prefer same-origin API routing where practical. The initial Vercel research is historical context, not an accepted deployment commitment (D001).
-
-## Current implementation boundary
-
-Backend, reducer and integrated UI/API are implemented and approved. Task 3.3 completed final quality assurance, reproducible V8/Go coverage reporting, real integration, README and repository review without changing application behavior. Detailed executed checks, exclusions and actual percentages are in TASKS.md/README.md. The later optional Docker task adds portable same-origin static serving and a verified image without changing calculator/API validation. Local Git is initialized; the original required public repository is pending publication approval. No commit, push or deployment occurred during QA or Dockerization.
+Go table-driven tests cover arithmetic edge cases and sentinel errors; httptest covers validation, methods, body boundaries, envelopes, headers, static routes and configuration.
+Vitest tests pure reducer sequences and the API client; React Testing Library/user-event tests keyboard/keypad interactions, accessibility semantics, pending/error/retry behavior, cancellation and stale responses under StrictMode.
+Frontend tests mock fetch and supply explicit results rather than evaluate arithmetic. Real Go/Vite and Docker browser/API checks verify the integration those mocks cannot establish.
+Coverage is diagnostic, without thresholds: Go includes all three packages/main; frontend includes handwritten App/reducer/client logic, excluding tests, declarations, mounting-only main.tsx and non-TS assets/configuration.
+Commands and measured results are in [README.md](../README.md#testing-and-coverage) and [TASKS.md](../TASKS.md). [DECISIONS.md](DECISIONS.md) explains the trade-offs.

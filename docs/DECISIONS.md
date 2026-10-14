@@ -1,111 +1,75 @@
-# Design decisions
+# Architectural decisions
 
-Updated 2026-10-14 after user review. Accepted decisions describe the target design; TASKS.md distinguishes implemented work from future work.
+All decisions below are accepted and implemented. D001, D003 and D005 incorporate user-approved revisions. Verification and submission status belong in [TASKS.md](../TASKS.md).
 
 ## D001 — Deployment-agnostic backend
 
-Status: **accepted, revised**. Supersedes the proposed single Vercel project/function adapter.
-
-Keep one Go module, `cmd/server`, `internal/calculator`, and `internal/httpapi`. The executable owns process/server configuration, HTTP code owns transport, and calculator owns arithmetic. No initial `api/` adapter, Vercel configuration, or hosting dependency. Deployment is an optional final milestone; required submission completion does not depend on it.
-
-The original Vercel proposal aimed for same-origin simplicity. Deferring hosting now avoids coupling the application to a provider and focuses effort on the required behavior. Trade-off: production routing and runtime compatibility will need separate research if deployment is approved. A root Vite project provides the local frontend layout, not a hosting decision.
+Decision: one Go module with cmd/server, internal/calculator and internal/httpapi; external deployment is optional.
+Rationale: transport and arithmetic can run locally or in Docker without a hosting-provider dependency.
+Trade-off: provider-specific runtime, TLS and routing must be verified separately if deployment is approved.
 
 ## D002 — float64 and JSON numbers
 
-Status: **accepted**.
+Decision: use finite float64 operands/results, normalize zero results and preserve native precision without implicit rounding.
+Rationale: this matches the frontend number model and the accepted general-purpose calculator scope.
+Trade-off: decimal rounding, large-integer precision loss and underflow remain visible; decimal strings/math/big would require extra policy and complexity.
 
-Use native finite numbers and reject undefined/non-finite outcomes. Keep the existing POST /api/calculate contract, validation, and structured errors. No decimal dependency or implicit output rounding. Binary rounding, large-integer precision loss, and underflow are documented.
+## D003 — Keypad with binary operations
 
-Alternatives: math/big.Rat or decimal strings preserve decimal inputs but require parsing and output/rounding policies. They are unnecessary for the accepted general-purpose calculator requirements.
+Decision: use a traditional accessible keypad, expression/result displays and sequential binary calculations through Go.
+Rationale: the keypad meets the requested interaction model while keeping the domain limited to four operations.
+Trade-off: state transitions need explicit tests; left-to-right chaining has no expression parser or operator precedence.
 
-## D003 — Keypad UI with explicit binary-operation state
+## D004 — Standard-library HTTP and bounded JSON
 
-Status: **accepted, revised**. Supersedes the two-operand form; one binary operation per API request remains accepted.
+Decision: net/http and encoding/json, a full 4 KiB read limit, strict object boundaries and unknown-field rejection.
+Rationale: standard tools handle the required contract without a framework or schema dependency.
+Trade-off: Go's case-insensitive field matching and last-duplicate-value behavior remain accepted; malformed/null/unknown inputs still fail.
 
-Build a polished traditional keypad, numeric and expression displays, decimal/sign editing, Clear/backspace, equals, keyboard support, and accessible responsive states. A small React reducer models entry, operator selection, second entry, pending, result, and error. Reuse returned results and support sequential binary operations through API requests only; no parser, precedence engine, state library, or JavaScript arithmetic implementation.
+## D005 — Behavior-focused tests
 
-The form was simpler to build but did not meet the requested calculator experience. Trade-off: keypad transitions and asynchronous chaining require more behavioral tests. DESIGN.md defines edge behavior (including no repeated-equals calculation and left-to-right chaining) for implementation and review.
+Decision: Go table-driven tests/httptest and Vitest/React Testing Library, supplemented by real browser/API checks; no coverage gates.
+Rationale: assertions on user-visible behavior and failure paths provide evidence beyond a percentage.
+Trade-off: coverage gaps require review; mocked fetch and jsdom alone cannot establish real integration or device accessibility.
 
-## D004 — Standard library backend and bounded JSON input
+## D006 — Explicit local server
 
-Status: **accepted**.
+Decision: a private constructor validates PORT and STATIC_DIR; main owns environment access, logging and listening; use an explicit ServeMux and finite timeouts.
+Rationale: configuration/routing remain testable without global registration or a parallel server architecture.
+Trade-off: graceful draining is absent. The executable's local module name avoids binding the project to an unselected public repository.
 
-Use plain functions, explicit errors, net/http, a 4 KiB body limit, and encoding/json with unknown-field rejection and complete-body validation. Keep calculation and transport separate, without unnecessary interfaces/frameworks. Missing/null operands must not become zero.
+## D007 — Minimal arithmetic API
 
-Alternatives: an HTTP framework, schema dependency, or custom JSON parser adds unnecessary surface area. Trade-off: standard case-insensitive key matching and last-value duplicate handling remain accepted and must be tested, alongside strict required fields and finite values.
+Decision: Calculate(operation string, a, b float64) (float64, error) with four sentinel errors and errors.Is classification.
+Rationale: plain functions and strings match the wire vocabulary; operation-first validation and arithmetic remain readable in two small switches.
+Trade-off: an operation registry/type or service interface would add public surface without useful extensibility for four operations.
 
-## D005 — Behavioral testing and diagnostic coverage
+## D008 — Ordered HTTP decoding and safe responses
 
-Status: **accepted, revised**. Supersedes numeric coverage gates.
+Decision: RawMessage fields, pointer operand decoding and an EOF check; validate operation/a/b in order and marshal responses before committing headers.
+Rationale: missing/null differ from zero, duplicate semantics stay consistent and error status selection is predictable.
+Trade-off: transport repeats the operation enum check, not arithmetic; unknown routes, broken connections and panics do not promise endpoint JSON envelopes.
 
-Retain Go table-driven tests/httptest and Vitest/React Testing Library. Test meaningful interaction sequences, state transitions, keyboard events, API payloads, errors, and async behavior. Tests accompany each feature; generate coverage reports and inspect gaps without arbitrary thresholds. Use real browser/API integration checks as well as mocked fetch tests.
+## D009 — Pure reducer and request identity
 
-Alternatives: percentage gates can encourage low-value assertions; deferring tests invites regressions. Trade-off: completion requires reviewing the behavior matrix and uncovered paths rather than relying on a single metric. Optional end-to-end framework/CI work is deferred until required functionality works.
+Decision: readonly discriminated states with text entry, API result numbers and a state-owned monotonic request ID preserved by Clear.
+Rationale: transitions are deterministic; no network calls, clocks, random IDs or duplicated arithmetic belong in the reducer.
+Trade-off: async chaining/retry intent adds explicit states. Repeated equals is a no-op; scientific result text is not character-edited.
 
-## D006 — Minimal local server setup
+## D010 — Cancellable API effect and native controls
 
-Status: **implemented within approved task 2.1**, 2026-10-14.
+Decision: App owns submission effects; the client combines caller abort with a 10-second timeout and validates finite HTTP 200 results. Use native controls and safe local feedback.
+Rationale: effect cleanup and reducer IDs prevent stale updates; stable pending state prevents duplicates. aria-disabled preserves focus during loading.
+Trade-off: keyboard shortcuts require calculator focus; cancellation cannot retract already-completed server work. No automatic retry or global state library is needed.
 
-Use Go 1.27.2, verified from the official download manifest and a checksum-verified user-local archive; keep the toolchain outside the repository. The module is named `sezzle-calculator` until a public destination is known, with no external dependencies. At task 2.1 the server used its own empty ServeMux, PORT default 8080 with range validation, and finite HTTP timeouts; task 2.3 wires the HTTP routes into this same server. At completion of task 2.1, both internal packages were documentation-only placeholders; task 2.2 adds the calculator implementation (D007).
+## D011 — Reproducible diagnostic coverage
 
-Alternatives: relying on DefaultServeMux introduces global registration; adding a health or placeholder calculation endpoint would expand the approved scope; choosing a remote module path now would invent a repository destination. Trade-off at task 2.1: all routes returned standard 404. Graceful request draining is still not implemented. The small unexported constructor accepts a port string for configuration tests; main owns process effects. README.md documents the all-interface bind and current behavior.
+Decision: matching Vitest V8 tooling with text/HTML/LCOV/JSON summaries, and a Go whole-backend profile including main. Generated reports stay out of Git.
+Rationale: reviewers can reproduce the metrics and inspect meaningful uncovered paths using [documented commands](../README.md#testing-and-coverage).
+Trade-off: frontend metrics exclude tests/declarations/mounting-only main.tsx and non-TS assets/configuration; statement/branch percentages do not prove accessibility or correctness.
 
-## D007 — Minimal arithmetic API and comparable errors
+## D012 — Optional single-container Docker runtime
 
-Status: **implemented within approved task 2.2**, 2026-10-14.
-
-Expose Calculate(operation string, a, b float64) (float64, error) and four sentinel errors. Keep operation names as plain strings matching the accepted domain vocabulary; use an early whitelist switch for deterministic operation-first validation, then operand checks and a small arithmetic switch. Return zero on failure. errors.Is lets a future transport layer classify failures without matching messages or adding HTTP concerns to the core.
-
-Alternatives: a custom operation type/constants, an operation-to-function registry, an error struct, or an interface adds public surface without useful behavior for four operations. Repeating the operation cases in two small switches is simpler than those abstractions and keeps validation order explicit. There is no mutable calculation state. Numeric guards reject NaN/Infinity, check zero exactly (including negative zero), preserve underflow/subnormals, and normalize zero outputs. The result NaN check is defensive: with finite operands and zero division rejected, the implemented operations cannot produce NaN; overflow tests exercise non-finite-result errors without manufacturing an impossible public-input path.
-
-## D008 — Bounded HTTP decoding and one route factory
-
-Status: **implemented within approved task 2.3**, 2026-10-14.
-
-At task 2.3, expose NewHandler() http.Handler and assign it to the existing server's Handler field. D012 later adds an optional fs.FS argument for static serving; nil preserves this API-only behavior. A private calculate handler owns methods, media type, parsing, and status mapping; arithmetic stays in the unchanged core. Use MaxBytesReader plus a bounded full read so trailing bytes count, then a DisallowUnknownFields decoder and an EOF check. RawMessage fields preserve the agreed last-duplicate-value behavior and allow ordered validation; decoding operands to pointers separates null/missing from zero. A small transport operation-enum check preserves operation-before-operand errors; it duplicates only request-enum validation, not arithmetic. Sentinel classification uses errors.Is.
-
-Alternatives: a method-qualified ServeMux pattern would generate its own plain-text 405; decoding directly into float64 fields would lose null/missing distinctions, and typed decoding errors would depend on field order. Streaming only the first object could miss oversized trailing input. An injected calculator interface, parser framework, or custom middleware adds no necessary behavior.
-
-Clarifications: reject repeated Content-Type headers (415); map body-read failures to safe invalid_json (400). JSON envelopes/headers apply to the endpoint, while mux 404s remain standard net/http responses. Marshal before WriteHeader, with a safe serialization fallback; HEAD omits the body. There is no panic-recovery layer or attempt to rewrite responses after a connection/write failure. These boundaries keep the implementation small and avoid promising JSON for failures it cannot deliver.
-
-## D009 — Pure reducer and staged frontend implementation
-
-Status: **accepted, implemented within approved task 3.1**, 2026-10-14. Refines D003 without changing the API or approved backend.
-
-Use readonly TypeScript discriminated unions for firstEntry, operatorSelected, secondEntry, pending, result, and error. Input remains text; finite number conversion prepares payloads, and sign toggle edits the leading character. Actual arithmetic is exclusively the Go API's responsibility. The reducer emits a pending submission containing a request and deterministic ID; completion actions supply the returned value. A counter carried in state survives Clear, so old responses cannot match newer work. Result display text is derived from the stored number, avoiding duplicated state.
-
-Equals with no second operand or after a result is a no-op. Operator selection after a second operand submits that pair with a next-operator intent, enabling binary left-to-right chaining. Pending input is blocked except Clear. Error retry retains the pair and continuation; editing abandons the continuation. Scientific results can be reused/sign-toggled without character-editing their exponent. Overflowing entry digits are ignored; binary rounding and underflow remain accepted. These choices keep every generated operand finite without introducing a separate input-validation error state.
-
-Task 3.1 installed React/DOM, TypeScript, Vite and its React plugin, Vitest, and matching type packages; versions are locked and verified with Node 24.21.0. Official [Vite setup](https://vite.dev/guide/) and [Vitest setup](https://vitest.dev/guide/) were consulted; registry engine and peer metadata were checked before installation. At the end of task 3.1, the production bundle was only an unstyled React setup page. Reducer tests use Node; DOM testing libraries and coverage tooling wait until their tasks need them. API execution/proxy, AbortController/timeout handling, and the polished keypad were deferred to further approval; the user approved them together in task 3.2 (D010).
-
-Alternatives: a state library or expression parser would expand the domain unnecessarily; network calls inside a reducer violate purity and make replay/React execution unsafe; a global/random request ID makes tests or replay nondeterministic. Using empty strings or a fallback right operand would blur whether the user entered the second operand. The trade-off is explicit transitions and a future effect layer that must dispatch completion IDs and safely map errors. Existing UI/keyboard requirements remain accepted, not implemented by this setup task.
-
-## D010 — Integrated keypad and cancellable API effect
-
-Status: **accepted, implemented within approved task 3.2**, 2026-10-14. Combines the previously proposed separate API and visual keypad tasks at the user's direction.
-
-Keep the approved reducer and all 67 tests unchanged. App.tsx uses useReducer and an effect keyed by the pending submission. The effect sends one request, dispatches completion with its ID, and aborts/ignores its work on cleanup. The API client owns a separate controller to combine caller cancellation with a 10-second timeout covering response-body decoding. Pending actions return the same reducer state, so they do not restart the effect. No state library or injected transport abstraction is needed.
-
-Accept only HTTP 200 JSON containing a finite numeric result. Recognized error codes map to useful local messages; malformed, non-JSON, unknown HTTP errors and network exceptions use safe fallback messages. Caller cancellation is silent in the UI; timeout remains retryable. No server diagnostics are rendered. Vite proxies relative /api requests to localhost:8080; Go needs no CORS or hosting changes.
-
-The interface uses a restrained neutral/green palette, system typography, native buttons, readable expression/result displays and plain CSS. Long numbers wrap intact. Keyboard handling is scoped to the focused calculator; Enter/Space on buttons retain native semantics. Pending buttons use aria-disabled with explicit click guards to preserve focus, and AC remains usable. This avoids disabling a focused button and losing subsequent keyboard input. Error alerts and polite live updates provide feedback beyond color.
-
-React Testing Library, its DOM peer, user-event, jest-dom and jsdom are development-only additions; runtime dependencies remain React/DOM. Node engines now match jsdom requirements. Tests follow the [Testing Library setup guidance](https://testing-library.com/docs/react-testing-library/setup/) and exercise effect cleanup under [React StrictMode](https://react.dev/reference/react/useEffect). Actual runtime/build/browser evidence is recorded separately in TASKS.md. Trade-offs: this is one calculator page without a component library, global keyboard listeners, automatic retry, history or an expression parser; deployment and broader device/accessibility testing remain separate work.
-
-## D011 — Reproducible final coverage and submission boundary
-
-Status: **accepted, implemented within approved Task 3.3**, 2026-10-14.
-
-Use the existing Vitest runner with its matching development-only @vitest/coverage-v8 5.0.4 provider and test:coverage script, following the [official coverage setup](https://vitest.dev/guide/coverage.html). Include handwritten src TS/TSX application logic, exclude tests/declarations and mounting-only main.tsx; produce text, HTML, LCOV and JSON-summary output under coverage/frontend. Go's whole-backend profile includes all three packages and main, with HTML under coverage/backend. Generated reports are ignored and reproducible; measured summaries live in README/TASKS.
-
-No percentage gate or artificial tests: the behavior matrix and uncovered paths were reviewed. Runtime arithmetic/HTTP/reducer/UI behavior remains unchanged. Local Git now exists, superseding the historical initial planning snapshot; publication is still required by the supplied original assignment and awaits approval. Deployment remains optional.
-
-## D012 — Optional single-container build and static routing
-
-Status: **accepted, implemented within the user-approved Dockerization deliverable**, 2026-10-14.
-
-Use one [multi-stage Dockerfile](https://docs.docker.com/build/building/multi-stage/): exact-version official Node/Go builder tags, locked npm ci, CGO_ENABLED=0 Go build, then scratch with only the executable and generated assets. A numeric non-root UID/GID needs no passwd database. The service has no outbound TLS requirements, so no certificate bundle or runtime OS packages are needed. Builder versions remain aligned with the verified project toolchains. No Compose or reverse proxy is necessary for one process/port.
-
-The optional STATIC_DIR setting validates index.html and passes os.DirFS to NewHandler(frontend fs.FS). This one standard-library parameter keeps HTTP concerns in httpapi and allows deterministic fstest-based tests without custom abstractions. Existing calls now supply nil for API-only behavior. Exact root and asset-only GET routes use [net/http static serving](https://pkg.go.dev/net/http); GET patterns also handle HEAD. There is no frontend fallback for API/unknown routes, and calculator/JSON validation are unchanged.
-
-Alternatives: embedding dist into Go would couple normal backend compilation to a frontend build; an nginx stage adds a second service/configuration; a full OS runtime adds unnecessary dependencies. Trade-offs: static output is a trusted local filesystem, no client-side routing is supported, scratch has no interactive shell, and external TLS/deployment remain separately approved. Docker build/runtime evidence and tested architecture are recorded in TASKS/README, separately from documentation research.
+Decision: [multi-stage build](https://docs.docker.com/build/building/multi-stage/) with exact-version Node/Go builders, locked npm ci and a non-root scratch runtime containing only the executable/assets.
+Rationale: Go's optional standard-library static routes serve UI/API on one origin; nil frontend preserves ordinary API-only development. No reverse proxy or Compose is required.
+Trade-off: trusted filesystem assets and no SPA fallback; scratch has no shell and external TLS is separate. Embedding dist would couple ordinary Go builds to frontend compilation.

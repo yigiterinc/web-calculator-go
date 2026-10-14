@@ -952,3 +952,210 @@ Summarize:
 
 Stop after Dockerization and wait for approval.
 ````
+
+## 2026-10-15 — Prompt 010 — Task 6.2: final documentation cleanup
+
+Source: user-attached Pasted text.txt, copied verbatim. Codex assisted with this documentation-only cleanup and consistency verification. The enclosing fence is not part of the prompt; earlier recorded text is preserved unchanged.
+
+````text
+Perform a final documentation cleanup and consistency review for the Sezzle calculator take-home assignment.
+
+The application has already passed comprehensive QA. Dockerization has been requested as an optional deliverable.
+
+Read all project documentation and inspect the actual implementation before making changes:
+
+- README.md
+- AGENTS.md
+- TASKS.md
+- docs/DESIGN.md
+- docs/DECISIONS.md
+- AI_PROMPTS.md
+- Dockerfile and .dockerignore, if implemented
+- Relevant source and configuration files
+
+## Objective
+
+Make the documentation concise, accurate, professional, and easy for Sezzle engineers to evaluate.
+
+The current documentation contains excessive historical setup details, repeated explanations, and internal implementation logs.
+
+Preserve useful engineering rationale while removing unnecessary verbosity.
+
+This is a documentation cleanup task, not an application refactoring task.
+
+## 1. README.md — Reviewer-facing documentation
+
+Target approximately 80–110 lines, without sacrificing essential information.
+
+Use this structure:
+
+1. Overview and tech stack
+2. Quick Start with Docker
+3. Local Development
+4. REST API and curl examples
+5. Testing and Coverage
+6. Design Decisions
+7. Limitations and AI Assistance
+
+Requirements:
+- Make Docker the preferred quick-start option ONLY if successfully implemented and verified.
+- Include working docker build/run commands.
+- Include prerequisites and local Go/Vite development commands.
+- Include API request, success response, and error example.
+- Include reproducible test and coverage commands.
+- Include a concise coverage summary using verified figures.
+- Explain the important architectural decisions.
+- Link to DESIGN.md, DECISIONS.md, and AI_PROMPTS.md.
+
+Remove:
+- Developer-specific Go installation paths.
+- Checksum verification history.
+- Temporary local ports.
+- Historical QA session descriptions.
+- Exhaustive HTTP validation details.
+- Long keyboard shortcut explanations.
+- Internal sentinel error tables.
+- Detailed reducer implementation walkthroughs.
+- Repeated explanations and unnecessary historical context.
+
+Write concise, natural technical English.
+
+## 2. AGENTS.md — Engineering instructions
+
+Keep the existing engineering principles and task workflow.
+
+Make only necessary adjustments:
+- Update outdated project status.
+- Reflect the approved optional Docker work.
+- Preserve idiomatic Go and minimal-dependency requirements.
+- Preserve task-by-task verification and documentation rules.
+
+Do not overcompress this file. It is already reasonably concise.
+
+## 3. TASKS.md — Task management
+
+Target approximately 60–85 lines.
+
+Keep:
+- Numbered milestones and task status.
+- Acceptance criteria.
+- Completed implementation scope.
+- Meaningful verification results.
+- Coverage summary.
+- Remaining submission actions.
+- Optional Docker task and its actual status.
+
+Remove or consolidate:
+- Historical toolchain installation steps.
+- SHA-256 checksums.
+- Temporary development ports.
+- Repeated lists of unchanged files.
+- Excessively detailed subtest inventories.
+- Redundant verification narration.
+
+Do not erase important evidence or claim unexecuted tests passed.
+
+If Docker has been completed, record the actual Docker build and runtime verification results.
+
+## 4. docs/DESIGN.md — Technical design
+
+Target approximately 90–120 lines.
+
+Keep:
+- Current architecture and component responsibilities.
+- API contract and relevant error semantics.
+- float64 precision policy.
+- Calculator reducer states and important transitions.
+- Async request lifecycle, cancellation, and stale-response protection.
+- Frontend/backend boundaries.
+- Testing strategy.
+- Docker runtime architecture, if implemented.
+
+Remove:
+- Initial environment inspection history.
+- Superseded architecture proposals.
+- Repeated implementation progress reports.
+- Historical task-by-task narratives.
+- Information that is already clear from code or README.
+
+Keep enough technical depth that an engineer can understand WHY the architecture works.
+
+## 5. docs/DECISIONS.md — Architectural decisions
+
+Target approximately 60–80 lines.
+
+Preserve meaningful accepted architectural decisions and their trade-offs.
+
+For each decision, use a concise format:
+- Decision
+- Rationale
+- Important trade-off or alternative
+
+Avoid detailed implementation history or repeated test reports.
+
+Add a Docker decision if Dockerization was actually implemented.
+
+Do not erase meaningful architectural decisions just to meet a line target.
+
+## 6. AI_PROMPTS.md — Preserve prompt provenance
+
+IMPORTANT: Do NOT shorten, rewrite, paraphrase, reorder, or delete existing recorded prompts.
+
+Sezzle explicitly requested disclosure of AI prompts.
+
+Preserve the actual prompt text and chronological order.
+
+Append newly used prompts faithfully, including the Dockerization prompt and this documentation cleanup prompt when available.
+
+Keep the disclosure accurate. Do not claim the file is a complete transcript if it is not.
+
+## 7. Cross-document consistency
+
+Check that all documentation agrees on:
+
+- Project structure
+- Development and Docker setup
+- HTTP API contract
+- Backend-only arithmetic
+- Frontend state management
+- Testing commands
+- Coverage measurements and scope
+- Deployment status
+- Docker status
+- Git repository/publication status
+
+Verify links, filenames, commands, and referenced paths.
+
+Do not leave stale statements such as "Docker is not implemented" if Docker was successfully added.
+
+Do not claim public repository publication or deployment without verifying them.
+
+Distinguish confirmed test results from historical results if any implementation changes could affect coverage.
+
+## 8. Constraints
+
+- Do not modify application logic or tests.
+- Do not modify Docker infrastructure during this documentation-only task.
+- Do not add dependencies.
+- Do not commit or push automatically.
+- Do not deploy.
+- Avoid marketing language and exaggerated claims.
+- Keep this proportional to a 2–4 hour take-home assignment.
+
+## 9. Final verification and report
+
+After the edits:
+
+1. Check Markdown links and referenced files.
+2. Verify all documented commands exist.
+3. Review git diff for unintended changes.
+4. Report line counts before and after for each documentation file.
+5. Summarize major edits and removed redundancies.
+6. Report any inconsistencies that could not be resolved.
+7. Confirm AI_PROMPTS.md preserved existing prompt text.
+8. Identify the remaining steps before GitHub publication.
+
+Update documentation and task status appropriately.
+
+Stop after this task and wait for approval.
+````

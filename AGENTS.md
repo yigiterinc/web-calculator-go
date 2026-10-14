@@ -47,4 +47,4 @@ Use React, TypeScript, Vite, plain CSS, Vitest, and React Testing Library. Use G
 
 ## Current approved scope
 
-Final QA and the optional Dockerization deliverable (Task 7.2) are complete. The multi-stage non-root Docker image and same-origin UI/API routing were built and verified. STATIC_DIR enables Go static serving; nil frontend keeps normal API-only development. Arithmetic/API validation and frontend behavior remain approved and unchanged. Stop and wait for approval; public repository publication is pending, with no commit, push, deployment or extra feature authorized.
+Task 6.2 — final documentation cleanup is complete. QA and optional Dockerization (7.2) are verified; STATIC_DIR enables same-origin Go static serving while nil frontend preserves API-only development. Application code, tests, dependencies and Docker infrastructure were unchanged during cleanup. Stop and wait for approval; public repository publication remains pending, with no commit, push, deployment or extra feature authorized.

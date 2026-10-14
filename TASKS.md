@@ -1,133 +1,75 @@
-# Implementation plan and verification record
+# Tasks and verification record
 
-## Current task
+## Current status
 
-**7.2 — Optional Dockerization: complete.** A verified multi-stage image serves the React UI and existing Go API from one non-root process on port 8080. Local Go/Vite development remains unchanged. Required QA remains complete; public repository publication is still pending separate approval. Stop; no commit, push or deployment is authorized.
+**6.2 — Documentation cleanup: complete.** Application QA and optional Dockerization are complete. Public repository publication remains pending approval; no deployment, commit or push is authorized by this task.
+Each task requires approval, appropriate checks, accurate documentation and faithful prompt logging. Stop after the approved task. The original 2–4 hour assignment remains the scope guide.
 
-Each implementation checkbox is a separate approval boundary. Read AGENTS.md and relevant design documentation, implement only the approved scope, add relevant tests, record actual checks, update documentation/prompt disclosure, then stop. The original 2–4 hour budget remains a scope guide; keypad behavior adds work, and review/toolchain setup time is separate. Do not sacrifice required behavior to meet an estimate.
+## 1. Architecture
 
-## 1. Architecture and API contract
+- [x] **1.1 Design proposal.** Acceptance: define package boundaries, API, numeric policy and verification plan.
+- [x] **1.2 Approved revisions.** Acceptance: standard-library Go, float64, traditional keypad/reducer, backend-only arithmetic and optional deployment. See docs/DECISIONS.md.
 
-- [x] **1.1 Inspect and propose the design.**
-  - Acceptance: inspect workspace/tools, research original deployment proposal, document architecture/API/edges/UI/testing/risks, and preserve the initial prompt without implementing.
-  - Verification (2026-10-14): workspace initially empty and not a Git repository; Node v24.21.0/npm 11.19.0/Git 2.38.1 available, Go absent from PATH. Original planning documentation checks passed. No application tests ran in that task.
-- [x] **1.2 Revise the plan following user review.**
-  - Acceptance: retain accepted backend contract/float64/stdlib architecture, replace form with keypad and explicit state transitions, make deployment optional, remove numeric coverage gates, split scaffold from arithmetic, log the actual user prompt.
-  - Verification: AGENTS.md, DESIGN.md, DECISIONS.md, and this plan updated; decisions marked accepted/revised. API and arithmetic policy retained. Prompt 002 records the revision/setup request.
+## 2. Go backend
 
-## 2. Go backend with tests
+- [x] **2.1 Server setup.** Acceptance: one Go module, cmd/server and internal packages, validated PORT and finite HTTP timeouts. Setup/build/routing checks passed.
+- [x] **2.2 Calculator core.** Acceptance: four operations, sentinel errors, finite values, signed-zero division and numeric edge tests; no HTTP dependencies. Core tests passed with 100% statement coverage.
+- [x] **2.3 REST API.** Acceptance: bounded strict JSON parsing, required operands, consistent status/error/header mapping and existing server wiring. Handler tests and real success/error requests passed.
+- [x] **2.4 Backend review.** Acceptance: focused Go correctness/simplicity review. User approved the backend; no blocking issue identified.
 
-- [x] **2.1 Initialize module and local server scaffold.** Depends on 1.2; approved.
-  - Acceptance: verify/make available Go, initialize one module, create cmd/server and documentation-only internal/calculator and internal/httpapi packages; local HTTP server scaffold with PORT validation and finite timeouts; README setup/build/run instructions; minimal configuration and routing tests. No arithmetic or calculation handler, frontend, deployment adapter, or added Go library dependencies.
-  - Checks: record go version, gofmt, go vet, go test (including race check if supported), go build, and a real local server smoke request. Confirm /api/calculate remains unimplemented (404). Record limitations and changed files before marking complete.
-  - Verification (2026-10-14): official Go 1.27.2 darwin/arm64 archive installed at ~/.local/share/sezzle-toolchains/go1.27.2; SHA-256 matched `76812b213b1b2302c978d28fa52fa92d541704b9e7d9d5db8002c50e4018c4c5`. No shell profile changes. Commands used the installation's bin directory on PATH.
-  - Passed: `go version`; `go mod tidy`; `go test ./...`; `go test -race -v ./...` (2 tests, 13 subtests); `go vet ./...`; `go build ./...`; `go build -o bin/server ./cmd/server`. `gofmt -l cmd internal` produced no output. `go list -m all` listed only sezzle-calculator, confirming no module dependencies.
-  - Live smoke: launched bin/server with PORT=60931, sent POST /api/calculate with a valid-shaped JSON body, and verified 404/plain-text unimplemented response; stopped the process. A separate run with PORT=invalid exited nonzero with the expected message. Python drove these process/HTTP checks; no test server remains running.
-  - Files created: go.mod, .gitignore, README.md, cmd/server/main.go, cmd/server/main_test.go, internal/calculator/doc.go, internal/httpapi/doc.go. Files updated: AGENTS.md, TASKS.md, docs/DESIGN.md, docs/DECISIONS.md, AI_PROMPTS.md. Generated bin/server is ignored.
-  - Remaining: internal packages contain only package documentation, so they have no tests yet; no arithmetic, API handler, frontend, graceful draining, Git initialization, or deployment. Those are outside this task. Setup/toolchain/build verification has no outstanding blocker.
-- [x] **2.2 Implement calculation core.** Approved and completed after 2.1.
-  - Acceptance: four operations and accepted float64/error policy; table-driven tests for order, zero/negative/fractional operands, division by signed zero, unsupported operations, non-finite inputs/results, precision and underflow. Arithmetic package has no HTTP dependencies.
-  - Checks: gofmt, go vet, tests and core coverage report; inspect meaningful uncovered paths; explain explicit Go errors.
-  - Verification (2026-10-14, Go 1.27.2 darwin/arm64): ran `gofmt -w internal/calculator`; `gofmt -l cmd internal` printed nothing. `go vet ./...`, `go test ./...`, and `go test -race ./...` all passed. The core contains 53 table-driven subtests; existing server tests also pass; httpapi still has no test files.
-  - Coverage: `go test -count=1 -coverprofile=coverage/calculator.out ./internal/calculator` passed with **100.0% calculator statement coverage**. `go tool cover -func=coverage/calculator.out` confirmed it; `go tool cover -html=coverage/calculator.out -o coverage/calculator.html` generated the HTML report. This is calculator-package statement coverage, not whole-backend or branch coverage; no percentage gate was used.
-  - Review: verified one exported function plus four sentinel errors, errors.Is-based tests, no interfaces/dependencies or transport coupling; `go list -f '{{.ImportPath}}: {{join .Imports ", "}}' ./internal/calculator` reported only errors and math. Reviewed operation/operand error precedence, exact signed-zero handling, overflow/underflow, subnormal preservation, and precision cases. Kept two small switches for explicit validation order rather than adding an operation registry/type; documented the defensive result-NaN guard in D007.
-  - Files: added internal/calculator/calculator.go and calculator_test.go; updated internal/calculator/doc.go, AGENTS.md, TASKS.md, README.md, docs/DESIGN.md, docs/DECISIONS.md, and AI_PROMPTS.md (verbatim Prompt 003). Coverage reports are generated/ignored. No server or HTTP package code changed.
-  - Remaining: no arithmetic blockers. HTTP mapping/handler and frontend remain unimplemented; next task 2.3 requires approval.
-- [x] **2.3 Implement REST calculation handler.** Approved and completed after 2.2.
-  - Acceptance: shared handler wired into local server; existing request/status/error/header contract, full bounded input validation; httptest cases alongside code; README curl examples reflect real behavior.
-  - Checks: gofmt/vet/tests, live requests for four operations and failure cases, no external Go dependencies or frontend arithmetic.
+## 3. React frontend and final QA
 
-  - Verification (2026-10-14, Go 1.27.2 darwin/arm64): `gofmt -w internal/httpapi cmd/server` executed; `gofmt -l cmd internal` printed nothing. `go vet ./...`, `go test ./...`, `go test -race ./...`, `go build ./...`, and `go build -o bin/server ./cmd/server` all passed. Initial focused HTTP/server tests also passed.
-  - HTTP tests: 60 request cases, 10 media-type cases, 7 method cases, 6 body-limit cases (4095/4096/4097 bytes with known/unknown length), 5 wrapped-error mappings, and a body-read failure/closure case. Assertions check statuses, JSON structure, safe messages, and response headers. Existing server tests now verify the actual calculation route and 404 behavior, including the trailing slash.
-  - Coverage: `go test -count=1 -coverprofile=coverage/httpapi.out ./internal/httpapi` passed with **96.1% HTTP package statement coverage**. `go tool cover -func=coverage/httpapi.out` inspected the functions; `go tool cover -html=coverage/httpapi.out -o coverage/httpapi.html` generated the report. Uncovered statements: the safe marshal-failure fallback (2) and return after response-write failure (1). Current validated response types cannot trigger the marshal failure; a disconnected-client write failure cannot deliver a replacement response. No artificial cases were added to inflate coverage. This is statement, not branch/whole-backend coverage.
-  - Real curl smoke: launched the compiled bin/server with PORT=61249. Used `curl --silent --show-error --max-time 5 -i -H 'Content-Type: application/json' --data-binary '<body>' http://127.0.0.1:61249/api/calculate`. Observed multiplication 12×5 → 200 `{"result":60}`; division 12/0 → 422 `{"error":{"code":"division_by_zero","message":"Cannot divide by zero."}}`; null a → 400 `{"error":{"code":"invalid_operand","message":"Operand a must be a finite JSON number."}}`. Also verified addition → 200/3.5, subtraction → 200/-3, and division → 200/0.25. JSON/no-store headers checked; server stopped after smoke tests.
-  - Review: existing server reused; no new dependencies/interfaces/middleware; calculator files confirmed unchanged by SHA-256 before/after comparison. RawMessage plus pointer decoding preserves ordered validation and null/zero distinctions. Documented repeated Content-Type (415), read failures (400), and endpoint-only JSON envelope scope in D008.
-  - Files: added internal/httpapi/handler.go and handler_test.go; updated internal/httpapi/doc.go, cmd/server/main.go and main_test.go, AGENTS.md, TASKS.md, README.md, docs/DESIGN.md, docs/DECISIONS.md, and AI_PROMPTS.md (verbatim Prompt 004). Generated HTTP coverage files and rebuilt bin/server are ignored.
-  - Remaining: no task 2.3 blocker. Standard mux 404s and connection/panic failures do not promise the endpoint JSON envelope; graceful draining and frontend remain outside this task. No commit, push, or deployment performed.
+- [x] **3.1 Reducer setup.** Acceptance: React/TypeScript/Vite/Vitest; pure entry/operator/result/pending/error transitions and request intents without arithmetic. All 67 reducer tests passed.
+- [x] **3.2 UI and API integration.** Acceptance: responsive accessible keypad, keyboard input, relative typed client, proxy, timeout/cancellation and stale-response handling. All 121 frontend tests, type checking and build passed.
+- [x] **3.3 Final QA.** Acceptance: supplied assignment review, full checks, coverage, real integration, README/prompt disclosure and repository inspection. No functional blocker found.
+- [x] **5.1 Behavior/coverage review.** Completed within 3.3; no separate task remains.
 
-- [x] **2.4 Backend review and approval (formerly proposed task 3.1).**
-  - User confirmed that the focused read-only review is complete, with no blocking issues, and approved the backend. The prior review identified only an optional HTTP signed-zero assertion improvement; the core already checks signed zero. No backend changes were requested.
-  - Existing executed backend checks and coverage are recorded under 2.2/2.3. The review did not rerun commands or edit files; do not interpret this approval as a new test execution. The old audit/coverage milestone is closed by the review and those existing verification records.
+## 6. Submission
 
-## 3. React keypad frontend with tests
+- [x] **6.2 Documentation cleanup.** Acceptance: concise current documentation, verified links/commands, preserved existing prompt text and no code/test/infrastructure changes. Completed 2026-10-15; Markdown/reference checks and diff review passed. No application tests were rerun for this documentation-only task.
+- [ ] **6.1 Public repository.** Acceptance: review changes, choose a public destination, commit/push with approval, verify public readability and record URL/commit. Local Git exists on master; no remote is configured. The required public repository is the remaining delivery step.
 
-Task numbers and boundaries below follow the user's latest Task 3.1 instruction, replacing the former 4.1/4.2 split. The former backend-review 3.1 is recorded above as 2.4.
+## 7. Optional deliverables
 
-- [x] **3.1 React setup and calculator state management.** Approved after backend review.
-  - Acceptance: minimal React/TypeScript/Vite/Vitest setup; deterministic reducer for digits, decimal/sign editing, operator replacement, Clear/backspace, equals, reuse/new entry, pending/errors/retries/stale results. Emit a binary calculation request intent; never perform arithmetic locally. Meaningful sequence tests. No HTTP client/integration or final visual design; approved Go files unchanged.
-  - Dependencies: React/React DOM 19.3.0; TypeScript 7.0.2; Vite 8.3.4; React plugin 6.1.2; Vitest 5.0.4; React/DOM/Node type declarations. Announced before installation; current registry engines/peers checked against Node 24.21.0 and npm 11.19.0. npm lockfile retained. React Testing Library, jsdom, and coverage tooling deferred until needed.
-  - Verification (2026-10-14): `npm install` succeeded (46 packages added; audit reported zero vulnerabilities). `npm run typecheck` passed; `npm test` passed all **67 reducer tests** in one file; `npm run build` passed TypeScript and Vite production compilation. Tests use Node, no DOM, network, Go process, or arithmetic mock. No frontend coverage percentage is claimed.
-  - Behavior: readonly discriminated states, exact API result reuse, string sign editing, no inferred second operand/repeated equals, pending actions blocked except Clear, monotonic IDs preserved on Clear, stale completions ignored, retry retains chaining intent while editing discards it. Scientific results cannot be corrupted by backspace. Digits that overflow a finite operand are ignored; decimal rounding/underflow follows the agreed number model.
-  - Files created: package.json, package-lock.json, tsconfig.json, vite.config.ts, index.html, src/main.tsx, src/App.tsx, src/calculator.ts, src/calculator.test.ts. Updated: AGENTS.md, TASKS.md, README.md, docs/DESIGN.md, docs/DECISIONS.md, AI_PROMPTS.md. Existing ignore rules already cover node_modules and dist.
-  - Scope: App is an unstyled setup placeholder; reducer has no React/network imports. API proxy/client, effects, AbortController/timeout behavior, keypad, keyboard and browser integration tests remain future tasks. All 9 Go source/test/module files were confirmed unchanged by before/after SHA-256 comparison. npm reported a pre-existing user-config warning for `python`; installation and all checks succeeded, and user configuration was not modified. No commit, push, or deployment. See README for reproducible commands.
-- [x] **3.2 React calculator UI and Go API integration.** Approved after 3.1; includes the previously proposed 3.3 keypad task.
-  - Acceptance: finished responsive keypad with number/expression displays, accessible controls, focus states, mouse/touch/keyboard support, all calculations via the existing Go API. Typed relative-path client, Vite proxy to localhost:8080, finite response validation, safe errors, 10-second timeout, AbortController cancellation, duplicate prevention and stale-response protection. Preserve the approved reducer and backend.
-  - Dependencies: announced and added only dev dependencies: React Testing Library 16.3.3, DOM Testing Library 10.4.2 (peer), user-event 14.6.8, jest-dom 7.0.1, jsdom 30.1.2. Engines now reflect jsdom's minimum supported Node versions; verified using Node 24.21.0/npm 11.19.0. Installation added 60 packages and reported zero vulnerabilities. npm reports the existing `python` config warning and an optional fsevents install-script notice; neither prevented checks and no global configuration was changed.
-  - Verification (2026-10-14): `npm run typecheck`, `npm test`, and `npm run build` passed. **121 tests across 3 files:** original 67 reducer cases unchanged, 32 API-client tests and 22 component/interaction cases. Tests cover all operation payloads, accessible controls, native Enter/Space and Tab, keyboard/touch, operator replacement/chaining/reuse, errors/retry, malformed/non-JSON/non-finite responses, loading/duplicate prevention under StrictMode, timeout including body-read time, Clear/stale success and failure, and unmount cancellation. Initial typecheck found a Testing Library option and missing CSS declaration; both corrected before passing checks.
-  - Live integration: 8080 was occupied by this project's existing Go server (process cwd verified), which was reused. 5173 belonged to another project's Vite process and was left untouched. Started this project's Vite at `http://127.0.0.1:5174/`. Browser keypad 12×5 displayed **60**; keyboard 12+5 displayed **17**; 8÷0 displayed the safe division-by-zero alert, then editing the right operand to 2 displayed **4**. Browser 0.1+0.2 displayed the complete **0.30000000000000004** value.
-  - Proxy evidence: real curl POSTs through Vite's `/api/calculate` returned **200** / `{"result":60}` and **422** / `{"error":{"code":"division_by_zero","message":"Cannot divide by zero."}}`. The initial attempt to start another Go server on 8080 failed because the existing instance was already listening; no claim of launching a second backend instance is made.
-  - Visual checks: inspected desktop 1280×960 and mobile 320px-wide layouts in the Codex in-app browser. At 320px, document width remained 320px, all keypad targets measured at least 59px high, and long results remained fully rendered. Full-page screenshots are in ignored `coverage/screenshots/desktop.jpg` and `mobile.jpg`. Viewport override reset after testing. Physical-device and broader browser/screen-reader testing have not been performed.
-  - Files created: src/api.ts, src/api.test.ts, src/App.test.tsx, src/styles.css, src/vite-env.d.ts. Modified: src/App.tsx, vite.config.ts, package.json, package-lock.json, AGENTS.md, TASKS.md, README.md, docs/DESIGN.md, docs/DECISIONS.md, AI_PROMPTS.md (verbatim Prompt 007).
-  - Boundaries: all 11 approved Go/module/reducer/test files confirmed unchanged by before/after SHA-256; Go tests were not rerun because backend files were unchanged. No frontend coverage report or percentage is claimed in this task. This Vite preview remains running on 5174; the pre-existing Go and unrelated Vite processes were not stopped. No commit, push, or deployment. No blocking issue remains for 3.2.
+- [ ] **7.1 External deployment.** Acceptance: separately approved hosting, TLS/routing configuration and live verification. Not required for submission.
+- [x] **7.2 Dockerization.** Acceptance: Node/Go multi-stage build, non-root minimal runtime, same-origin UI/API, static route tests, ignore rules, real build/run and cleanup. Completed and verified; see evidence below.
 
-The former proposed **3.3 polished keypad** was absorbed into 3.2. The user's latest instruction assigns **3.3** to final QA instead.
+## Executed verification
 
-- [x] **3.3 Final Quality Assurance and Submission Preparation.** Approved after 3.2.
-  - Acceptance: inspect the supplied original assignment and actual implementation; review meaningful behavior, run full backend/frontend checks, generate reproducible reports, exercise real integration, finalize docs/prompt disclosure and inspect repository readiness. No automatic commit, push or deployment.
-  - Review: all production arithmetic is in internal/calculator; frontend only edits input text, converts operands, validates responses and increments request IDs. Existing 121 tests meaningfully cover the requested behavior matrix, so no extra tests or application refactoring were needed. The reported Backspace issue was focus outside the panel, confirmed by the user and consistent with the documented keyboard scope.
-  - Dependency/configuration: announced and added exact dev dependency @vitest/coverage-v8 5.0.4 matching Vitest, plus test:coverage script and V8 text/HTML/LCOV/JSON-summary output. Include handwritten src TS/TSX, exclude tests, .d.ts declarations and mounting-only main.tsx; CSS/HTML/configuration are outside this frontend application-logic metric. No coverage gate. npm ci passed (117 packages installed, 118 audited, zero vulnerabilities); pre-existing python config and optional fsevents script warnings did not block checks.
-  - Backend checks (2026-10-14, Go 1.27.2 darwin/arm64): gofmt -w cmd internal; gofmt -l cmd internal printed nothing; go vet ./..., go test ./..., go test -race ./..., go build ./... all exited 0. Formatting made no backend changes. Built bin/server for real integration. Coverage command: go test -count=1 -coverprofile=coverage/backend/coverage.out ./...; go tool cover -func and -html succeeded.
-  - Backend statement coverage: whole backend **91.4%**, calculator package **100.0%**, HTTP package **96.1%**, server package **50.0%**. Reviewed gaps: main startup/fatal exits (main 0%, newServer 100%), HTTP marshal fallback and return on response-write failure. Live process smoke exercised startup; no artificial unit cases were added. Whole-backend coverage includes main; it is not branch coverage.
-  - Frontend checks: npm run typecheck, npm test, npm run build, npm run test and npm run test:coverage all passed. Each test run passed **121 tests in 3 files** (67 reducer, 32 API, 22 React). Build compiled 18 modules. Frontend application-logic aggregate: **99.34% statements (151/152), 98.23% branches (167/170), 100% functions (18/18), 100% lines (124/124)**. Reducer and API client each 100% on all four metrics; App 98.46% statements, 95.89% branches, 100% functions/lines. Reviewed App gaps at lines 58/63/74: redundant cancelled-success guard, non-Error fallback and unrelated interactive-input guard (no editable inputs in this panel). Actual client throws Error/DOMException; cancellation/stale-response behavior already has focused tests. No fabricated edge cases were added for coverage.
-  - Real integration: launched a fresh compiled Go process on **18080** and Vite on **5175**, with temporary ignored coverage/qa-vite.config.ts overriding only the QA proxy target. Browser keypad 12×5 → **60**; keyboard -1.5+2 → **0.5**; result reuse 0.5−1 → **-0.5**; Escape then 89/Backspace/+→÷/0 → division-by-zero alert; editing right operand to 2 → **4**. All four operations therefore exercised through actual UI/API. Proxy curl observed **200**/{"result":60}, **422**/division_by_zero and **400**/invalid_operand, with JSON/no-store/nosniff headers.
-  - Accessibility/responsive evidence: inspected real 320×800 rendering; page width 320 with no horizontal overflow, minimum button height 59px, all 19 controls named. Tab focused AC with solid 3px focus outline. Browser console had no captured warnings/errors. Viewport override reset. Screenshots: ignored coverage/screenshots/qa-mobile.jpg and qa-error.jpg. Physical touch, multiple browsers and actual screen-reader announcements remain optional manual verification; automated React tests cover touch/native keyboard and loading/cancellation/error paths.
-  - Repository: Git already initialized on master; HEAD d6c1669. No remote configured. Reviewed all 30 tracked files, structure, working tree, .gitignore and tracked-file secret patterns (private keys, common cloud/GitHub/API tokens, assigned credential literals); no suspected credentials or tracked generated artifacts found. This is a focused pattern/read review, not a guarantee against all secrets. node_modules, dist, coverage and bin/server were confirmed ignored. Only intended QA config/dependency/docs changes remain uncommitted; git diff --check passed.
-  - Prompt review: initial prompt matched attached Pasted text.txt exactly (apart from trailing newline). Existing significant user prompts were checked against available conversation context; the log explicitly does not claim full transcript coverage. Prompt 008 records this QA request verbatim, supplied twice identically. No missing interactions were reconstructed.
-  - Files modified: package.json, package-lock.json, vite.config.ts, README.md, AGENTS.md, TASKS.md, docs/DESIGN.md, docs/DECISIONS.md, AI_PROMPTS.md. Application/backend/reducer/test sources unchanged. Generated reports/binary/temp proxy config/screenshots are ignored.
-  - Cleanup: QA-only Go/Vite processes and QA browser tab stopped/closed after checks. Pre-existing Go 8080 and Vite 5174 preview preserved. No commit, push or deployment performed.
+Results below were executed on 2026-10-14, before the documentation-only cleanup. Go 1.27.2 and Node 24.21.0/npm 11.19.0 were used locally.
 
-### Supplied original assignment checklist
+- Go: gofmt applied; formatting check printed nothing. go vet ./..., go test ./..., go test -race ./... and go build ./... passed after Dockerization.
+- Frontend: npm ci, npm run typecheck, npm test, npm run build and npm run test passed during QA. Type checking, 121 tests across three files and build passed again after Dockerization.
+- Coverage: npm run test:coverage passed during QA; whole-backend coverage and HTML generation passed after Dockerization. Historical QA reports remain available locally under ignored coverage/.
+- Browser/API: all four operations, decimal/negative entry, reuse, Clear, Backspace, operator replacement and division-by-zero recovery passed through actual Go/Vite integration.
+- Accessibility/layout: accessible control names and native keyboard behavior tested; browser checked desktop and 320px layout, no horizontal overflow, minimum key height 59px and visible 3px focus outline. Physical devices, additional browsers and screen readers remain manual checks.
+- Async/error behavior: focused tests cover loading, duplicate prevention, timeout, Clear/unmount cancellation, stale success/failure, malformed responses, HTTP and network failures.
 
-The source is Prompt 001/attached Pasted text.txt; no separate employer assignment document was provided. User-approved later decisions make deployment optional.
+## Coverage scope and results
 
-| Requirement | Final QA status |
-| --- | --- |
-| React + TypeScript frontend; Go REST backend | Pass |
-| Addition, subtraction, multiplication, division | Pass: core/HTTP tests and actual browser |
-| Input validation and robust errors | Pass: full HTTP validation, finite numbers, safe client errors |
-| Responsive calculator UI | Pass: desktop and 320px browser checks; keyboard/accessibility tests |
-| Unit tests and coverage reports for both layers | Pass: commands and reports documented, actual metrics above |
-| Setup instructions, API examples and design rationale | Pass: README/DESIGN/DECISIONS finalized |
-| Public Git repository | Pending: local Git exists, no remote/public URL; requires publication approval |
-| AI prompts disclosed | Pass: faithful scoped AI_PROMPTS.md and README disclosure |
-| 2–4 hour take-home scope | No new features/refactoring; optional hosting/CI/device matrix deferred |
+| Measurement | Statements | Branches | Functions | Lines |
+| --- | --- | --- | --- | --- |
+| Backend after Dockerization | 92.3% | — | — | — |
+| Calculator package | 100.0% | — | — | — |
+| HTTP package | 96.2% | — | — | — |
+| Server package | 70.0% | — | — | — |
+| Frontend final QA | 99.34% | 98.23% | 100% | 100% |
 
-## 5. Frontend verification
+The backend total includes all packages and main; Go reports statement coverage. Frontend metrics include App, reducer and API client, excluding tests/declarations/main.tsx and non-TS assets/configuration. Reducer and client each measured 100% on all four metrics.
+Before static serving, QA backend coverage was 91.4% total, HTTP 96.1%, server 50%; calculator was 100%. Those are historical figures, superseded by the Dockerization profile for current Go code.
+Reviewed gaps: process startup/fatal exits, HTTP serialization/write failure paths, and defensive App cancellation/error/keyboard guards. No arbitrary threshold or artificial tests were added.
+Reproduce with README commands. Existing Dockerization profile is coverage/dockerization.out/.html; QA frontend text/HTML/LCOV/JSON-summary reports are in coverage/frontend/.
 
-- [x] **5.1 Audit behavior and generate reports.** Completed within user-approved Task 3.3 above, rather than as a separate implementation task.
+## Docker verification
 
-## 6. Required submission and public repository
+- docker build completed using Node 24.21.0-alpine3.23 and Go 1.27.2-alpine3.23; npm ci/build and CGO-disabled Go compilation ran inside the stages.
+- Final scratch image: Linux ARM64, 2,693,542 bytes (~2.69 MB), UID/GID 65532; only the Go process runs. Image build does not execute tests.
+- Container GET / and generated JS/CSS returned 200; browser keypad 12×5 displayed 60. POST calculation returned 200/result 60, division by zero 422, null operand 400 and GET calculation 405 with Allow: POST.
+- Unknown API/page paths and missing assets returned 404 without frontend HTML. Static routing/configuration tests and original API tests passed; API-only local mode is preserved.
+- Test containers were stopped/removed. Built image remains local; no image publication or external deployment occurred. Other architectures remain untested.
 
-- [ ] **6.1 Publish the prepared repository and verify public readability.** Documentation, local reproducibility and QA are complete under 3.3. Git has already been initialized by the user; no reinitialization is needed. Remaining acceptance: choose/confirm destination, review and commit the QA changes, push the public repository, verify public readability and record URL/commit. Requires explicit approval; no commit or push is authorized by Task 3.3.
+## Submission checklist
 
-## 7. Optional deployment (not a required submission dependency)
-
-- [ ] **7.1 Select hosting and deploy only if separately approved.** Depends on 6.1 and user choice to deploy.
-  - Acceptance: research chosen platform/runtime, document trade-offs, add only necessary configuration/adapters, preserve independent local operation, verify deployment URL and access.
-  - Checks: selected platform build, live UI/API success and failure requests, no API-to-HTML routing mistakes. May remain pending without blocking required submission.
-
-- [x] **7.2 Optional Dockerization deliverable.** Separately approved by the user after final QA; independent of external deployment.
-  - Acceptance: production multi-stage Node/Go build, minimal non-root runtime, single-origin page/API on 8080, preserved API semantics/local development, static routing tests, .dockerignore, documented commands, real Docker build/run if available, cleanup. No Compose, features, commit/push/deploy.
-  - Implementation: Dockerfile uses node:24.21.0-alpine3.23, npm ci/build; golang:1.27.2-alpine3.23, CGO_ENABLED=0 go build -trimpath -ldflags="-s -w"; scratch runtime only /server and /web, USER 65532:65532, PORT=8080, STATIC_DIR=/web. .dockerignore excludes node_modules/dist/coverage/bin/.git/environment/npm config and generated logs/build metadata. No new application dependencies.
-  - Go change: main validates optional STATIC_DIR/index.html and passes os.DirFS to the existing NewHandler, now taking a standard fs.FS (nil for original API-only mode). httpapi adds exact GET/HEAD root and GET/HEAD asset subtree. No catch-all/index fallback; unknown API routes remain 404 and /api/calculate retains its method/JSON/status/error behavior. Arithmetic, API parsing/validation and frontend sources are unchanged.
-  - Tests: 16 table-driven static/API coexistence cases, 2 disabled-frontend cases, server frontend wiring and 2 invalid-static configuration cases added. Original HTTP tests only changed NewHandler calls to supply nil. Existing 121 frontend tests are unchanged and passed. A first Go vet check caught an unused import in the new test; removed before all checks passed.
-  - Executed (2026-10-14): gofmt -w cmd internal; go vet ./..., go test ./..., go test -race ./..., go build ./... passed. npm run typecheck, npm test (121 tests/3 files), npm run build passed. Re-ran Go normal/race checks after the last added disabled-static tests; both passed. New coverage saved separately to coverage/dockerization.out and .html; original QA profiles remain untouched. New Go statement coverage: whole backend 92.3%, calculator 100.0%, HTTP 96.2%, server 70.0%. No frontend coverage rerun/changed percentage is claimed.
-  - Docker availability: client 28.1.1, Docker Desktop 4.66.1/engine 29.3.1, linux/arm64. docker build --progress=plain -t sezzle-calculator:local . exited 0; frontend npm ci/build and Go compilation ran inside their stages. Final image size 2,693,542 bytes (~2.69 MB), inspected runtime user 65532:65532; docker top confirmed only /server running as UID 65532.
-  - Runtime: docker run --detach --name sezzle-calculator-docker-qa --publish 127.0.0.1:18081:8080 sezzle-calculator:local succeeded (8080 is occupied by the existing local server). Actual HTTP requests verified root 200 with React mount/asset references; generated JS and CSS 200 with correct media types; multiplication 200/{"result":60}; zero division 422/division_by_zero; null operand 400/invalid_operand; GET /api/calculate 405/method_not_allowed with Allow: POST. JSON/no-store/nosniff headers retained.
-  - Routing: /api, /api/, /api/unknown, /api/calculate/, /assets/missing.js and /unknown all returned 404 and no React index. Browser opened the production container page and keypad 12×5 displayed 60 through the relative Go API. Screenshot saved in ignored coverage/screenshots/docker-calculator.jpg. Test browser tab closed and container stopped/removed after checks; existing Go/Vite preview untouched. Built image retained locally for reuse.
-  - Files added: Dockerfile, .dockerignore, internal/httpapi/frontend_test.go. Modified: cmd/server/main.go and main_test.go, internal/httpapi/handler.go and handler_test.go, README.md, AGENTS.md, TASKS.md, docs/DESIGN.md, docs/DECISIONS.md, AI_PROMPTS.md (verbatim Prompt 009).
-  - Limitations/readiness: image build is verified on linux/arm64 only; initial builds need registry/npm access. Scratch has no interactive shell and service exposes HTTP; external TLS/hosting are separately approved. Application/container are ready for GitHub publication once the changes are reviewed and a public remote is selected. No functional Dockerization blocker remains. No commit, push or deployment performed.
-
-## Verification records
-
-Append date, actual commands/results, changed files, and limitations to each task. Never mark completion without satisfied criteria. Record faithful user prompts chronologically in AI_PROMPTS.md. Optional history/memory/CI/extra operations require later approval; the keypad is required.
+The supplied original assignment is preserved as Prompt 001; no separate employer brief was supplied.
+React/TypeScript + Go, four operations, validation/errors, responsive UI, tests/coverage, setup/API/design documentation and AI disclosure are complete. The only required delivery item still pending is a publicly readable repository.
+Generated dependencies, builds, binaries and coverage are ignored; focused tracked-file review found no suspected credentials. No commit, push or deployment was performed by the QA, Docker or cleanup tasks.
