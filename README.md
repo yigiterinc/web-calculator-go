@@ -103,4 +103,4 @@ See [DESIGN.md](docs/DESIGN.md) for boundaries and state transitions, and [DECIS
 Binary floating-point rounding and large-integer precision limits apply. There is no expression parser, operator precedence, history or repeated-equals calculation.
 Keyboard shortcuts require focus inside the calculator. External deployment/TLS and graceful server draining are not implemented; other container architectures and physical-device/screen-reader testing remain unverified.
 Codex assisted with design, implementation, testing and documentation. [AI_PROMPTS.md](AI_PROMPTS.md) preserves significant user prompts and discloses the log's limits; it is not a complete transcript.
-The application and Docker image are verified locally. Git is initialized, but no public remote is configured; publication remains a separate submission step.
+The application and Docker image are verified locally.

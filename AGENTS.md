@@ -47,4 +47,4 @@ Use React, TypeScript, Vite, plain CSS, Vitest, and React Testing Library. Use G
 
 ## Current approved scope
 
-Task 6.2 — final documentation cleanup is complete. QA and optional Dockerization (7.2) are verified; STATIC_DIR enables same-origin Go static serving while nil frontend preserves API-only development. Application code, tests, dependencies and Docker infrastructure were unchanged during cleanup. Stop and wait for approval; public repository publication remains pending, with no commit, push, deployment or extra feature authorized.
+Implementation, QA, optional Dockerization (7.2), documentation cleanup (6.2) and GitHub publication (6.1) are complete. The public repository is https://github.com/yigiterinc/web-calculator-go. STATIC_DIR enables same-origin Go static serving while nil frontend preserves API-only development. The current task authorizes publication-status updates and amendment/push of the latest documentation commit, preserving the user's README exactly. Stop afterward; external deployment and further changes require separate approval.

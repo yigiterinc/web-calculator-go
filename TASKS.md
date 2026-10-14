@@ -2,7 +2,7 @@
 
 ## Current status
 
-**6.2 — Documentation cleanup: complete.** Application QA and optional Dockerization are complete. Public repository publication remains pending approval; no deployment, commit or push is authorized by this task.
+**6.1 — GitHub publication: complete.** Implementation, QA, Dockerization and documentation cleanup are complete. The public repository is [yigiterinc/web-calculator-go](https://github.com/yigiterinc/web-calculator-go), verified publicly accessible on 2026-10-15. This task authorizes amending the latest documentation commit and updating origin/master with force-with-lease; external deployment remains optional and unapproved.
 Each task requires approval, appropriate checks, accurate documentation and faithful prompt logging. Stop after the approved task. The original 2–4 hour assignment remains the scope guide.
 
 ## 1. Architecture
@@ -27,7 +27,7 @@ Each task requires approval, appropriate checks, accurate documentation and fait
 ## 6. Submission
 
 - [x] **6.2 Documentation cleanup.** Acceptance: concise current documentation, verified links/commands, preserved existing prompt text and no code/test/infrastructure changes. Completed 2026-10-15; Markdown/reference checks and diff review passed. No application tests were rerun for this documentation-only task.
-- [ ] **6.1 Public repository.** Acceptance: review changes, choose a public destination, commit/push with approval, verify public readability and record URL/commit. Local Git exists on master; no remote is configured. The required public repository is the remaining delivery step.
+- [x] **6.1 Public repository.** Acceptance: review changes, publish with approval and verify public readability. Completed: https://github.com/yigiterinc/web-calculator-go is public; origin is configured and master is published. Publication status updates amend the existing documentation commit without changing its message. The amended commit is identifiable in Git history; origin/master is verified against it after the lease-protected push.
 
 ## 7. Optional deliverables
 
@@ -71,5 +71,5 @@ Reproduce with README commands. Existing Dockerization profile is coverage/docke
 ## Submission checklist
 
 The supplied original assignment is preserved as Prompt 001; no separate employer brief was supplied.
-React/TypeScript + Go, four operations, validation/errors, responsive UI, tests/coverage, setup/API/design documentation and AI disclosure are complete. The only required delivery item still pending is a publicly readable repository.
+React/TypeScript + Go, four operations, validation/errors, responsive UI, tests/coverage, setup/API/design documentation, AI disclosure and public GitHub repository publication are complete. External deployment remains optional.
 Generated dependencies, builds, binaries and coverage are ignored; focused tracked-file review found no suspected credentials. No commit, push or deployment was performed by the QA, Docker or cleanup tasks.
