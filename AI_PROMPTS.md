@@ -1,6 +1,6 @@
 # AI usage disclosure and prompt log
 
-AI assistance: OpenAI Codex assisted with environment inspection, official documentation research, planning and its revision, the backend setup task, calculator core, REST API, read-only backend review, frontend setup/reducer, the integrated React keypad/API client, and final QA/submission preparation. Implementation and executed verification are recorded in TASKS.md.
+AI assistance: OpenAI Codex assisted with environment inspection, official documentation research, planning and its revision, the backend setup task, calculator core, REST API, read-only backend review, frontend setup/reducer, the integrated React keypad/API client, final QA/submission preparation, and optional Dockerization. Implementation and executed verification are recorded in TASKS.md.
 
 Scope: this log preserves the initial user-supplied project prompt and subsequent user prompts below verbatim. It is not a complete transcript of system/developer instructions, tool calls, or assistant messages, and does not claim to include all interactions. Append subsequent user prompts chronologically, exactly as supplied, with related task IDs where practical; explicitly label any unavailable material rather than reconstructing it.
 
@@ -851,4 +851,104 @@ Update TASKS.md and AI_PROMPTS.md.
 Stop after completing this QA task and wait for approval.
 
 Remember: this is a 2–4 hour take-home. Keep the review proportional and avoid overengineering.
+````
+
+## 2026-10-14 — Prompt 009 — Optional Dockerization deliverable (Task 7.2)
+
+Source: user message, copied verbatim. The enclosing fence is not part of the prompt.
+
+````text
+Implement the optional Dockerization deliverable for the completed Sezzle calculator take-home assignment.
+
+The application is complete and has passed final QA:
+
+- Go backend using net/http
+- React + TypeScript + Vite frontend
+- POST /api/calculate
+- Comprehensive backend and frontend tests
+- README and AI prompt documentation
+
+The goal is to make the full-stack application runnable with a single Docker command.
+
+This is an optional enhancement. Keep the implementation minimal and proportional to a 2–4 hour take-home assignment.
+
+## Requirements
+
+1. Create a production-oriented multi-stage Dockerfile:
+   - Node stage builds the React/Vite frontend using npm ci.
+   - Go stage builds the backend binary.
+   - Minimal runtime stage contains only the Go executable, built frontend assets, and necessary runtime files.
+2. Serve the frontend and backend from the same origin on port 8080:
+   - GET / serves the calculator UI.
+   - POST /api/calculate continues to serve the existing REST API.
+   - Frontend uses relative API requests.
+   - API routes must never accidentally fall back to index.html.
+   - Preserve existing API response semantics and HTTP status codes.
+3. If Go static file serving is needed:
+   - Keep the change small and idiomatic.
+   - Avoid introducing frameworks or reverse proxies.
+   - Preserve existing local development behavior.
+   - Add relevant tests for static file serving and routing.
+   - Do not modify calculator arithmetic or API validation.
+4. Add .dockerignore to exclude:
+   - node_modules
+   - dist
+   - coverage reports
+   - .git
+   - local environment files
+   - unnecessary generated artifacts
+5. Use an appropriate non-root runtime user where practical.
+6. Keep the runtime image reasonably small and avoid unnecessary dependencies.
+7. Do not add Docker Compose unless there is a concrete need. A single Dockerfile is preferred.
+
+## Verification
+
+If Docker is available:
+
+- Build the image.
+- Start the container.
+- Verify GET / returns the React application.
+- Verify POST /api/calculate returns a correct result.
+- Verify division-by-zero errors.
+- Confirm API routes are not handled by the frontend fallback.
+- Run existing Go tests and frontend tests to detect regressions.
+- Stop and remove test containers afterward.
+
+If Docker is unavailable, clearly report what could and could not be verified. Do not claim a successful Docker build without actually running it.
+
+## Documentation
+
+Update README.md with:
+
+- Docker build command
+- Docker run command
+- URL to access the application
+- Explanation of the single-container architecture
+- Any known limitations
+
+Update TASKS.md and relevant design decisions.
+
+Record this prompt in AI_PROMPTS.md.
+
+## Constraints
+
+- Do not introduce unrelated changes.
+- Do not add optional calculator features.
+- Do not deploy.
+- Do not commit or push automatically.
+- Preserve the existing test and coverage results.
+- Prioritize reliable, reproducible builds over clever optimizations.
+
+## Final report
+
+Summarize:
+
+1. Files added or modified.
+2. Docker image architecture.
+3. Actual build and runtime verification results.
+4. Tests executed.
+5. Any remaining limitations.
+6. Whether the project is ready for GitHub publication.
+
+Stop after Dockerization and wait for approval.
 ````

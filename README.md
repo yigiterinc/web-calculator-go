@@ -55,9 +55,30 @@ In terminal 2, from the same directory:
 npm run dev
 ```
 
-Open the URL Vite prints (normally `http://localhost:5173`; it selects another port if occupied). Keep Go on 8080 for the configured proxy; if you change PORT, update the target in vite.config.ts too. Stop Vite with Ctrl+C. The frontend build creates dist/; production hosting/routing is deliberately undecided.
+Open the URL Vite prints (normally `http://localhost:5173`; it selects another port if occupied). Keep Go on 8080 for the configured proxy; if you change PORT, update the target in vite.config.ts too. Stop Vite with Ctrl+C. The frontend build creates dist/. Docker optionally serves those assets from Go on the same origin; external hosting remains undecided.
 
 Final QA launched a fresh Go server on 18080 and Vite on 5175 with a temporary proxy configuration (the existing 8080/5174 preview was left running). Actual browser checks exercised all four operations, negative/fractional entry, result reuse, Clear/Backspace/operator replacement, division-by-zero feedback and recovery. Proxy curl requests returned 200/result 60, 422/division_by_zero and 400/invalid_operand. A 320px layout had no horizontal overflow and keypad targets were at least 59px high.
+
+## Run with Docker
+
+Docker Engine/Docker Desktop is the only local prerequisite for this path. From the repository root:
+
+```sh
+docker build -t sezzle-calculator .
+docker run --rm --name sezzle-calculator -p 127.0.0.1:8080:8080 sezzle-calculator
+```
+
+Open **http://localhost:8080/**. Stop with Ctrl+C; `--rm` removes the container. If host port 8080 is occupied, use `-p 127.0.0.1:18081:8080` and open http://localhost:18081/. No Go, Node or npm installation is required on the host.
+
+The multi-stage Dockerfile builds React using the locked dependencies (`npm ci`) in a Node stage, then compiles a static Go executable with CGO disabled in a Go stage. The final scratch image contains only `/server` and built frontend files in `/web`, running as numeric UID/GID 65532. There is one process and one port: Go serves GET/HEAD `/`, GET/HEAD `/assets/…`, and the existing POST `/api/calculate`. Relative API requests therefore share the page's origin. No reverse proxy, Vite runtime or Docker Compose is needed.
+
+`STATIC_DIR=/web` enables static serving in the image. Without STATIC_DIR, local `go run ./cmd/server` keeps the existing API-only behavior and Vite proxy workflow. To try the same production routing without Docker, run `npm run build` then `STATIC_DIR=dist go run ./cmd/server`. A configured directory must contain a regular `index.html`; invalid configuration fails at startup. Static files must be trusted build output.
+
+Only the root page and asset subtree are frontend routes. Missing assets, unknown pages and unknown API paths return 404; they never fall back to index.html. API validation, JSON envelopes and status codes are unchanged. The build context excludes dependencies, host build output, coverage, Git metadata, local environment/npm configuration and generated artifacts through .dockerignore.
+
+Docker verification on 2026-10-14: the linux/arm64 image built successfully and measured **2,693,542 bytes (about 2.69 MB)**. A real container served HTML, JavaScript and CSS with HTTP 200; multiplication returned 200/result 60, division by zero 422, invalid operands 400, unsupported API method 405 and unknown API paths 404. Browser keypad 12×5 displayed 60 through the container API. The test container was stopped and removed. Existing QA coverage reports were preserved; a separate Dockerization profile measured 92.3% whole-backend statement coverage (calculator 100%, HTTP 96.2%, server 70%). The 121 frontend tests and full Go suites passed again.
+
+Limitations: this image exposes HTTP, with TLS/hosting left to a separately approved deployment. The scratch runtime has no shell/package manager; use `docker logs` for diagnostics. Builds need registry/npm network access on the first run. Verification covered linux/arm64; other architectures were not tested. The image build compiles the application; run the documented test commands separately before submission.
 
 ## Using the calculator
 
@@ -112,7 +133,7 @@ The endpoint returns `Content-Type: application/json`, `Cache-Control: no-store`
 
 The body cap is **4,096 bytes**, including trailing whitespace; larger bodies return 413. Malformed JSON, unknown fields, non-object bodies, and additional JSON values return 400/invalid_json. Missing/null/wrong-type operands return 400/invalid_operand, while zero is valid. Unsupported operations return 400/invalid_operation. Division by signed zero and arithmetic overflow return 422 with division_by_zero or result_out_of_range. Unexpected returned errors use a safe 500/internal_error envelope without internal diagnostics.
 
-Validation proceeds through method, media type, full body size/read, JSON structure, operation, a, then b. Field names follow standard Go case-insensitive matching, and the final duplicate field value wins (including null). Unknown paths and `/api/calculate/` return the standard net/http 404 rather than the endpoint JSON envelope. No frontend page is served by Go; Vite serves the calculator UI. See the [full contract](docs/DESIGN.md#api-contract).
+Validation proceeds through method, media type, full body size/read, JSON structure, operation, a, then b. Field names follow standard Go case-insensitive matching, and the final duplicate field value wins (including null). Unknown paths and `/api/calculate/` return the standard net/http 404 rather than the endpoint JSON envelope. Go is API-only by default; setting STATIC_DIR enables the root page and asset routes, including in Docker. Vite still serves the UI during development. See the [full contract](docs/DESIGN.md#api-contract).
 
 ## Build and test
 
@@ -175,11 +196,11 @@ Validation order is operation, operands, then arithmetic-specific checks. Succes
 
 - `cmd/server`: process entry point, configuration, and explicit net/http server with its own ServeMux.
 - `internal/calculator`: stateless arithmetic and numeric validation, tested through its exported API.
-- `internal/httpapi`: NewHandler() assembles routes; private functions handle bounded request parsing, validation, calculator calls, and JSON responses.
+- `internal/httpapi`: NewHandler(frontend fs.FS) assembles routes (nil for API-only); private functions handle bounded request parsing, validation, calculator calls, and JSON responses.
 
 `internal` keeps implementation packages private to this module tree. An explicit mux avoids global route registration. The unexported server constructor returns a server and error so configuration is testable without opening a socket; main owns environment access, logging, and listening. No application-specific interfaces or framework are needed.
 
-The local module name `sezzle-calculator` avoids inventing a public Git destination. Git is initialized locally on master, with no remote configured at final QA. A public destination must be selected before submission; adopting its canonical module path then is optional for this executable project. Frontend code lives in src/: App.tsx owns the keypad and request effect, calculator.ts owns pure transitions, api.ts owns transport/validation/cancellation, and styles.css owns presentation. No hosting adapter/configuration is included.
+The local module name `sezzle-calculator` avoids inventing a public Git destination. Git is initialized locally on master, with no remote configured at final QA. A public destination must be selected before submission; adopting its canonical module path then is optional for this executable project. Frontend code lives in src/: App.tsx owns the keypad and request effect, calculator.ts owns pure transitions, api.ts owns transport/validation/cancellation, and styles.css owns presentation. Docker is a portable single-container option; no provider-specific hosting adapter is included.
 
 ## Calculator reducer
 
@@ -195,7 +216,7 @@ Results retain the exact returned number. A following operator reuses it; a digi
 - Sequential binary calculations run left-to-right. There is no general expression parser, precedence, repeated-equals operation, history or persistence.
 - Keyboard shortcuts operate while focus is inside the calculator. Enter/Space on a focused keypad button activate that button; Backspace outside the panel is not captured.
 - A running Go API is required for arithmetic. Failed requests are retryable; Clear cancels pending UI work. Cancellation cannot guarantee the server has not already completed a request.
-- Production hosting and API routing are not configured. Go serves the API; Vite serves the frontend locally. No deployment is required under the revised scope.
+- Docker provides a built single-container UI/API on port 8080. External hosting/TLS are not configured. Go remains API-only and Vite serves the frontend in normal local development. Deployment is optional.
 - Graceful server draining is not implemented. Physical-device, cross-browser and screen-reader testing remain manual checks; accessible names, focus, keyboard semantics and responsive dimensions were verified in tests/the in-app browser.
 - Final QA found no functional submission blocker. The original supplied assignment requires a public Git repository; publication and public-readability verification remain pending approval. No separate employer assignment document was supplied beyond the original project prompt recorded in AI_PROMPTS.md.
 

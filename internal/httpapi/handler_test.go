@@ -82,7 +82,7 @@ func TestCalculate(t *testing.T) {
 		{name: "multiplication overflow", body: `{"operation":"multiply","a":1e308,"b":2}`, status: 422, code: "result_out_of_range"},
 		{name: "division overflow", body: `{"operation":"divide","a":1e308,"b":0.1}`, status: 422, code: "result_out_of_range"},
 	}
-	handler := NewHandler()
+	handler := NewHandler(nil)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httptest.NewRequest(http.MethodPost, "/api/calculate", strings.NewReader(tt.body))
@@ -127,7 +127,7 @@ func TestContentType(t *testing.T) {
 				r.Header.Add("Content-Type", value)
 			}
 			w := httptest.NewRecorder()
-			NewHandler().ServeHTTP(w, r)
+			NewHandler(nil).ServeHTTP(w, r)
 			code := ""
 			if tt.status == 415 {
 				code = "unsupported_media_type"
@@ -143,7 +143,7 @@ func TestMethods(t *testing.T) {
 			// Missing media type and malformed input must not hide the method error.
 			r := httptest.NewRequest(method, "/api/calculate", strings.NewReader("invalid"))
 			w := httptest.NewRecorder()
-			NewHandler().ServeHTTP(w, r)
+			NewHandler(nil).ServeHTTP(w, r)
 			if w.Header().Get("Allow") != "POST" {
 				t.Errorf("Allow = %q, want POST", w.Header().Get("Allow"))
 			}
@@ -171,7 +171,7 @@ func TestBodyLimit(t *testing.T) {
 					r.ContentLength = -1
 				}
 				w := httptest.NewRecorder()
-				NewHandler().ServeHTTP(w, r)
+				NewHandler(nil).ServeHTTP(w, r)
 				if size > 4096 {
 					assertResponse(t, w, 413, "payload_too_large", 0)
 				} else {
@@ -222,7 +222,7 @@ func TestBodyReadFailure(t *testing.T) {
 	r.Body = body
 	r.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
-	NewHandler().ServeHTTP(w, r)
+	NewHandler(nil).ServeHTTP(w, r)
 	assertResponse(t, w, 400, "invalid_json", 0)
 	if !body.closed {
 		t.Error("request body was not closed")

@@ -3,6 +3,8 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -27,7 +29,7 @@ func TestNewServerPort(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			server, err := newServer(tt.port)
+			server, err := newServer(tt.port, "")
 			if tt.wantErr {
 				if err == nil || server != nil {
 					t.Fatalf("newServer(%q) = (%v, %v), want nil server and error", tt.port, server, err)
@@ -44,8 +46,41 @@ func TestNewServerPort(t *testing.T) {
 	}
 }
 
+func TestServerFrontend(t *testing.T) {
+	directory := t.TempDir()
+	const index = "<div id=\"root\"></div>"
+	if err := os.WriteFile(filepath.Join(directory, "index.html"), []byte(index), 0600); err != nil {
+		t.Fatal(err)
+	}
+	server, err := newServer("", directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := httptest.NewRecorder()
+	server.Handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/", nil))
+	if w.Code != http.StatusOK || w.Body.String() != index {
+		t.Fatalf("frontend response = %d %q", w.Code, w.Body.String())
+	}
+}
+
+func TestInvalidFrontendDirectory(t *testing.T) {
+	directory := t.TempDir()
+	for _, name := range []string{"missing index", "directory index"} {
+		t.Run(name, func(t *testing.T) {
+			if name == "directory index" {
+				if err := os.Mkdir(filepath.Join(directory, "index.html"), 0700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if server, err := newServer("", directory); err == nil || server != nil {
+				t.Fatalf("newServer = (%v, %v), want nil server and error", server, err)
+			}
+		})
+	}
+}
+
 func TestServerRoutes(t *testing.T) {
-	server, err := newServer("")
+	server, err := newServer("", "")
 	if err != nil {
 		t.Fatal(err)
 	}

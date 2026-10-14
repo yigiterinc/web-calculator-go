@@ -1,0 +1,13 @@
+node_modules
+dist
+coverage
+coverage.out
+coverage.html
+bin
+.git
+.env
+.env.*
+.npmrc
+.DS_Store
+*.log
+*.tsbuildinfo

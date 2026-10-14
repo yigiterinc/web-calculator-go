@@ -31,6 +31,7 @@ sezzle-calculator/
 │   ├── api.ts / api.test.ts        # fetch and response validation
 │   ├── styles.css
 │   └── vite-env.d.ts
+├── Dockerfile / .dockerignore
 ├── .gitignore
 ├── README.md / AGENTS.md / TASKS.md / AI_PROMPTS.md
 └── docs/
@@ -38,7 +39,7 @@ sezzle-calculator/
     └── DECISIONS.md
 ```
 
-React calls relative `/api/calculate`. Vite proxies `/api` to the Go server on localhost:8080 in development. The local executable composes the `httpapi` handler, which calls `calculator`. The arithmetic package has no HTTP or hosting dependencies. Production hosting is optional and undecided; relative API URLs allow a future same-origin arrangement without coupling business logic to a provider. No database, router library, CORS middleware, client router, state library, or npm workspace tooling is needed.
+React calls relative `/api/calculate`. Vite proxies `/api` to the Go server on localhost:8080 in development. The local executable composes the `httpapi` handler, which calls `calculator`. The arithmetic package has no HTTP or hosting dependencies. Docker optionally provides same-origin UI/API serving in one Go process; external hosting is optional and undecided. Relative API URLs work in both modes without coupling business logic to a provider. No database, router library, CORS middleware, client router, state library, or npm workspace tooling is needed.
 
 Go-specific rationale: `cmd/server` holds the executable; `internal` restricts external imports of implementation packages. Plain functions and explicit returned errors fit this small service; interfaces add no useful seam here. Request operand pointers distinguish missing/null input from valid zero. These conventions follow [Go module layout guidance](https://go.dev/doc/modules/layout).
 
@@ -80,7 +81,7 @@ Check method, then media type, then read the size-limited body, then validate JS
 
 Use stable `encoding/json` behavior rather than an additional JSON library: field matching is case-insensitive and duplicate recognized fields use their last value. Clients must send the canonical names above; test and document this accepted tolerance. Unknown fields still fail. This avoids writing a custom parser for this exercise. See the [standard decoder documentation](https://pkg.go.dev/encoding/json). Request validation must not silently accept missing or null numbers as zero.
 
-Implementation details clarified in task 2.3: reject repeated Content-Type headers with 415; request read failures use 400/invalid_json without leaking the underlying error. Decode fields into json.RawMessage before validating their types in contract order, so the last duplicate value wins even when an earlier value has a different type. Validate the operation enum before operand parsing; all arithmetic and numeric-result checks remain in calculator. The HTTP package exports only NewHandler() http.Handler. Its route is registered without a method qualifier so custom JSON 405 responses can include Allow: POST. Response encoding happens before headers are committed. There is no added panic-recovery middleware: net/http still governs unexpected panics and broken connections, so these do not promise an application JSON envelope.
+Implementation details clarified in task 2.3: reject repeated Content-Type headers with 415; request read failures use 400/invalid_json without leaking the underlying error. Decode fields into json.RawMessage before validating their types in contract order, so the last duplicate value wins even when an earlier value has a different type. Validate the operation enum before operand parsing; all arithmetic and numeric-result checks remain in calculator. The HTTP package exports only NewHandler(frontend fs.FS) http.Handler; nil preserves API-only mode. Dockerization adds optional static routes as described below. Its route is registered without a method qualifier so custom JSON 405 responses can include Allow: POST. Response encoding happens before headers are committed. There is no added panic-recovery middleware: net/http still governs unexpected panics and broken connections, so these do not promise an application JSON envelope.
 
 The local server returns 404 for unknown API paths. Platform-generated 404s, gateway failures, and timeouts may not follow our error envelope; the frontend must tolerate non-JSON responses. Do not redirect `/api/calculate/` into the endpoint or add a catch-all SPA rewrite. Only `/` needs a frontend page.
 
@@ -161,10 +162,16 @@ Tests accompany each implementation task. Later verification tasks close gaps an
 
 Vitest's [coverage documentation](https://vitest.dev/guide/coverage.html) supports the proposed V8 provider; keep its package version aligned with Vitest. Generated reports/build output stay out of Git; document reproducible commands and observed results instead.
 
+## Optional Docker runtime
+
+The approved Dockerization deliverable uses Node 24.21.0-alpine3.23 for npm ci/build, Go 1.27.2-alpine3.23 for a CGO-disabled executable, and scratch for the non-root runtime. Only the executable and built assets are copied into the final image. No Node, Go toolchain, proxy, shell or extra runtime library is included.
+
+main reads optional STATIC_DIR and validates index.html before constructing an os.DirFS. httpapi owns static HTTP routing: exact GET/HEAD root and GET/HEAD asset subtree, using net/http's standard serving functions. The calculation route and validation remain unchanged. No catch-all SPA fallback exists, so API misses cannot return frontend HTML. Local API-only mode remains the default; Docker sets STATIC_DIR=/web and PORT=8080. Tests cover enabled/disabled serving, missing files, methods, startup validation and API route/error preservation.
+
 ## Optional deployment
 
 Deployment is an optional final milestone after the required implementation, documentation, and public repository. No Vercel function adapter, provider configuration, hosting dependency, or production topology is part of the initial architecture. The standard Go executable must run locally on its own. If deployment is approved later, select the platform and verify its current runtime, routing, build, and account requirements then. Prefer same-origin API routing where practical. The initial Vercel research is historical context, not an accepted deployment commitment (D001).
 
 ## Current implementation boundary
 
-Backend, reducer and integrated UI/API are implemented and approved. Task 3.3 completed final quality assurance, reproducible V8/Go coverage reporting, real integration, README and repository review without changing application behavior. Detailed executed checks, exclusions and actual percentages are in TASKS.md/README.md. Local Git is initialized; the original required public repository is pending publication approval. No commit, push or deployment occurred during QA.
+Backend, reducer and integrated UI/API are implemented and approved. Task 3.3 completed final quality assurance, reproducible V8/Go coverage reporting, real integration, README and repository review without changing application behavior. Detailed executed checks, exclusions and actual percentages are in TASKS.md/README.md. The later optional Docker task adds portable same-origin static serving and a verified image without changing calculator/API validation. Local Git is initialized; the original required public repository is pending publication approval. No commit, push or deployment occurred during QA or Dockerization.

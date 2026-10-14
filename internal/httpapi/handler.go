@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/fs"
 	"mime"
 	"net/http"
 
@@ -26,11 +27,18 @@ type errorResponse struct {
 	} `json:"error"`
 }
 
-// NewHandler returns the application's routes with no global mux registration.
-func NewHandler() http.Handler {
+// NewHandler returns the application routes. A nil frontend serves only the API.
+func NewHandler(frontend fs.FS) http.Handler {
 	mux := http.NewServeMux()
 	// Handle methods ourselves so 405 responses use the JSON error contract.
 	mux.HandleFunc("/api/calculate", calculate)
+	if frontend != nil {
+		// Only the single page and built assets are frontend routes; API misses stay 404.
+		mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFileFS(w, r, frontend, "index.html")
+		})
+		mux.Handle("GET /assets/", http.FileServerFS(frontend))
+	}
 	return mux
 }
 

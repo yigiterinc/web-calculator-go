@@ -47,4 +47,4 @@ Use React, TypeScript, Vite, plain CSS, Vitest, and React Testing Library. Use G
 
 ## Current approved scope
 
-Task 3.3 — Final Quality Assurance and Submission Preparation is complete. Functional review, full checks, coverage, live integration and submission documentation passed. The application has no identified blocker. The remaining required delivery step is public repository publication: local Git exists on master but has no remote. Stop and wait for approval; no commit, push, deployment or extra feature is authorized.
+Final QA and the optional Dockerization deliverable (Task 7.2) are complete. The multi-stage non-root Docker image and same-origin UI/API routing were built and verified. STATIC_DIR enables Go static serving; nil frontend keeps normal API-only development. Arithmetic/API validation and frontend behavior remain approved and unchanged. Stop and wait for approval; public repository publication is pending, with no commit, push, deployment or extra feature authorized.
