@@ -1,6 +1,6 @@
 # Sezzle Calculator
 
-A full-stack calculator take-home using Go and React/TypeScript. **Current status: backend approved; frontend scaffold and pure calculator reducer implemented.** POST /api/calculate supports four arithmetic operations with input validation and structured JSON errors. The keypad and frontend API connection remain pending. Deployment is optional.
+A full-stack calculator take-home using Go and React/TypeScript. **Current status: working React calculator connected to the approved Go backend.** The responsive keypad supports mouse, touch, keyboard, result reuse, and sequential binary operations. POST /api/calculate performs all arithmetic and returns structured errors. Deployment is optional.
 
 ## Requirements and setup
 
@@ -15,14 +15,13 @@ go version
 
 Other machines can use a normal Go installation on PATH. Frontend setup was verified with **Node 24.21.0 and npm 11.19.0**. Use a Node version satisfying package.json's engines (Node 24 is recommended for reproducing this setup).
 
-Install the locked frontend dependencies and run the setup page:
+Install the locked frontend dependencies:
 
 ```sh
 npm ci
-npm run dev
 ```
 
-Vite prints the local URL. The page is deliberately an unstyled placeholder: the reducer is implemented and tested, but no keypad or API requests are connected yet. No Go process is needed for this task's frontend tests or page. The Vite API proxy will be added with integration.
+Start Go and Vite in separate terminals as shown below. All calculation requests use relative `/api/calculate` URLs; Vite proxies `/api` to `http://localhost:8080`. The frontend tests mock fetch and do not require a running server.
 
 ```sh
 npm run typecheck
@@ -30,11 +29,11 @@ npm test
 npm run build
 ```
 
-Task 3.1 passed all 67 reducer tests and the production build. `npm run test:watch` is available during development; `npm run preview` serves the built setup page. Tests currently run in Node without browser/network dependencies. Component, keyboard, fetch, cancellation, and coverage tooling follow in their implementation tasks.
+Task 3.2 passed **121 tests** (67 reducer, 32 API client, 22 React interaction cases), type checking, and the production build. `npm run test:watch` is available during development. Pure reducer/API tests use Node; component tests use jsdom, React Testing Library and user-event. Coverage review remains a separate milestone; no frontend percentage is claimed. `npm run preview` previews built assets locally; it is not a production hosting setup.
 
 ## Run locally
 
-From the repository root:
+In terminal 1, from the repository root:
 
 ```sh
 go run ./cmd/server
@@ -47,6 +46,25 @@ PORT=9000 go run ./cmd/server
 ```
 
 An unset or empty PORT uses 8080. Invalid values fail before listening with a clear error. Stop with Ctrl+C. The scaffold sets header/read/write/idle timeouts to 5/10/10/60 seconds. Graceful draining is not implemented.
+
+In terminal 2, from the same directory:
+
+```sh
+npm run dev
+```
+
+Open the URL Vite prints (normally `http://localhost:5173`; it selects another port if occupied). Keep Go on 8080 for the configured proxy; if you change PORT, update the target in vite.config.ts too. Stop Vite with Ctrl+C. The frontend build creates dist/; production hosting/routing is deliberately undecided.
+
+Live task 3.2 verification used the already-running project Go server on 8080 and a new Vite server on 5174. In-browser keypad multiplication 12×5 returned 60, keyboard addition 12+5 returned 17, division by zero showed a useful error, and editing 8÷0 to 8÷2 returned 4. Curl through Vite independently confirmed HTTP 200/result 60 and HTTP 422/division_by_zero. Mobile checks at 320px had no horizontal page overflow; desktop was checked at 1280×960.
+
+## Using the calculator
+
+Click/tap the keys or type while focus is inside the calculator. Digits, `.`, `+`, `-`, `*`, `/`, Enter and `=` work as expected. Backspace edits, Escape/Delete clears, and F9 toggles the sign. Tab navigates controls; Enter/Space on a focused button activates that button once. Browser modifier shortcuts and unrelated controls are left alone. Shortcuts are also documented in the page.
+
+Select another operator before entering the second number to replace it. Equals without a second number, or repeated equals after a result, does nothing. A digit after a result starts fresh; an operator reuses it. Chaining is left-to-right, one Go request per binary pair. Decimal results retain native floating-point precision, including scientific notation; they are not silently rounded.
+
+While calculating, editing and duplicate submissions are blocked and **AC stays available**. Clear/unmount cancels the request; stale responses cannot restore old state. Requests time out after 10 seconds. Errors use safe, local messages; press equals to retry the pair, edit the right operand, or clear. Backend error bodies/diagnostics are never shown verbatim.
+
 
 ## REST API and curl examples
 
@@ -92,7 +110,7 @@ The endpoint returns `Content-Type: application/json`, `Cache-Control: no-store`
 
 The body cap is **4,096 bytes**, including trailing whitespace; larger bodies return 413. Malformed JSON, unknown fields, non-object bodies, and additional JSON values return 400/invalid_json. Missing/null/wrong-type operands return 400/invalid_operand, while zero is valid. Unsupported operations return 400/invalid_operation. Division by signed zero and arithmetic overflow return 422 with division_by_zero or result_out_of_range. Unexpected returned errors use a safe 500/internal_error envelope without internal diagnostics.
 
-Validation proceeds through method, media type, full body size/read, JSON structure, operation, a, then b. Field names follow standard Go case-insensitive matching, and the final duplicate field value wins (including null). Unknown paths and `/api/calculate/` return the standard net/http 404 rather than the endpoint JSON envelope. No frontend page is served by Go; Vite serves the separate setup page. See the [full contract](docs/DESIGN.md#api-contract).
+Validation proceeds through method, media type, full body size/read, JSON structure, operation, a, then b. Field names follow standard Go case-insensitive matching, and the final duplicate field value wins (including null). Unknown paths and `/api/calculate/` return the standard net/http 404 rather than the endpoint JSON envelope. No frontend page is served by Go; Vite serves the calculator UI. See the [full contract](docs/DESIGN.md#api-contract).
 
 ## Build and test
 
@@ -144,20 +162,20 @@ Validation order is operation, operands, then arithmetic-specific checks. Succes
 
 `internal` keeps implementation packages private to this module tree. An explicit mux avoids global route registration. The unexported server constructor returns a server and error so configuration is testable without opening a socket; main owns environment access, logging, and listening. No application-specific interfaces or framework are needed.
 
-The local module name `sezzle-calculator` avoids inventing a public Git destination. A remote can be selected at the submission milestone; adopting its canonical module path then is optional for this executable project. Frontend setup and reducer source live in src/, with the keypad and API execution still pending. No hosting adapter/configuration is included.
+The local module name `sezzle-calculator` avoids inventing a public Git destination. A remote can be selected at the submission milestone; adopting its canonical module path then is optional for this executable project. Frontend code lives in src/: App.tsx owns the keypad and request effect, calculator.ts owns pure transitions, api.ts owns transport/validation/cancellation, and styles.css owns presentation. No hosting adapter/configuration is included.
 
 ## Calculator reducer
 
-`src/calculator.ts` exports `calculatorReducer`, `initialState`, and the action/state/request types. Use the reducer with React's `useReducer` when connecting the UI. It has six explicit states: firstEntry, operatorSelected, secondEntry, pending, result, and error.
+`src/calculator.ts` exports `calculatorReducer`, `initialState`, and the action/state/request types. App.tsx uses it with React's `useReducer`. It has six explicit states: firstEntry, operatorSelected, secondEntry, pending, result, and error.
 
-Digits stay as text for decimal/sign/backspace editing. Selecting an operator saves the left operand; selecting another operator before entering the right operand replaces it. Equals with a right operand emits `pending.submission.request` containing `{ operation, a, b }`. A future effect sends that request to Go and dispatches `resolved` or `rejected` with the submission ID. The reducer performs no calculation and initiates no network work.
+Digits stay as text for decimal/sign/backspace editing. Selecting an operator saves the left operand; selecting another operator before entering the right operand replaces it. Equals with a right operand emits `pending.submission.request` containing `{ operation, a, b }`. An effect sends that request to Go and dispatches `resolved` or `rejected` with the submission ID; cleanup aborts the old effect. The reducer performs no calculation and initiates no network work.
 
 Results retain the exact returned number. A following operator reuses it; a digit or decimal starts fresh. Equals without a right operand or after a result does nothing. Selecting an operator after the second operand requests the current pair and saves the next operator for left-to-right chaining. Clear resets entry while preserving request identity progression; pending edits are blocked, and stale completions are ignored. API errors support retry or editing the right operand. Full edge behavior and scope are in [DESIGN.md](docs/DESIGN.md#explicit-state-model).
 
 ## Project records
 
 - [TASKS.md](TASKS.md): approved scope, acceptance criteria, and executed verification.
-- [docs/DESIGN.md](docs/DESIGN.md): accepted API/numeric policy and planned keypad state transitions.
+- [docs/DESIGN.md](docs/DESIGN.md): accepted API/numeric policy and implemented keypad state transitions.
 - [docs/DECISIONS.md](docs/DECISIONS.md): accepted/revised decisions and trade-offs.
 - [AI_PROMPTS.md](AI_PROMPTS.md): faithful scoped AI prompt disclosure.
 - [AGENTS.md](AGENTS.md): persistent engineering workflow.

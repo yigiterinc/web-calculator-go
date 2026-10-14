@@ -1,6 +1,6 @@
 # AI usage disclosure and prompt log
 
-AI assistance: OpenAI Codex assisted with environment inspection, official documentation research, planning and its revision, the backend setup task, calculator core, REST API, read-only backend review, and frontend setup/reducer. Implementation and executed verification are recorded in TASKS.md; the frontend API connection and keypad remain pending.
+AI assistance: OpenAI Codex assisted with environment inspection, official documentation research, planning and its revision, the backend setup task, calculator core, REST API, read-only backend review, frontend setup/reducer, and the integrated React keypad/API client. Implementation and executed verification are recorded in TASKS.md.
 
 Scope: this log preserves the initial user-supplied project prompt and subsequent user prompts below verbatim. It is not a complete transcript of system/developer instructions, tool calls, or assistant messages, and does not claim to include all interactions. Append subsequent user prompts chronologically, exactly as supplied, with related task IDs where practical; explicitly label any unavailable material rather than reconstructing it.
 
@@ -573,4 +573,128 @@ Summarize:
 6. Next proposed task.
 
 Stop after Task 3.1 and wait for approval.
+````
+
+## 2026-10-14 — Prompt 007 — Task 3.2: React calculator UI and Go API integration
+
+Source: user message, copied verbatim. The enclosing Markdown fence is not part of the prompt.
+
+````text
+Proceed with Task 3.2 — React calculator UI and Go API integration.
+
+Task 3.1 is complete. The pure calculator reducer and its 67 tests are approved. The Go backend is also complete and reviewed.
+
+Before implementation:
+
+- Read AGENTS.md, TASKS.md, README.md, and relevant design decisions.
+- Inspect the existing reducer and API contract.
+- Preserve the existing reducer behavior and tests unless a real integration issue requires changes.
+
+## Objective
+
+Build a complete, working, visually polished traditional calculator interface connected to the existing Go REST API.
+
+This should feel like a finished small product, not a generic demo or form.
+
+## UI requirements
+
+Create a modern, professional calculator interface featuring:
+
+- A centered calculator panel with thoughtful spacing and proportions
+- A prominent number/result display
+- A smaller expression display
+- A conventional numeric keypad
+- Clear visual distinction between digits, operators, and primary actions
+- AC, backspace, sign toggle, decimal, and equals controls
+- Subtle hover, active, focus, loading, and error states
+- Responsive layout for mobile and desktop
+- Accessible button names and keyboard navigation
+
+Use React, TypeScript, and plain CSS. Avoid unnecessary UI frameworks, icon libraries, or animation dependencies.
+
+Use your design judgment to create a visually appealing but restrained interface. Avoid excessive gradients, decorative elements, or unnecessary visual effects.
+
+## API integration
+
+Connect the existing reducer to:
+
+POST /api/calculate
+
+Request:\
+{ "operation": "add", "a": 12, "b": 5 }
+
+Success:\
+{ "result": 17 }
+
+Requirements:
+
+- Create a small typed API client.
+- Use relative API paths.
+- Configure Vite's development proxy to localhost:8080.
+- All arithmetic must execute on the Go backend.
+- Handle loading, HTTP errors, malformed responses, network failures, and timeouts.
+- Use AbortController for request cancellation.
+- Ensure Clear invalidates pending requests and prevents stale results from appearing.
+- Prevent duplicate calculation requests while pending.
+- Preserve the existing reducer's state transitions.
+- Do not introduce a state management library.
+
+## Interaction requirements
+
+- Mouse and touch keypad interactions
+- Keyboard digits and decimal point
+- Keyboard +, -, \*, /, Enter, =, Backspace, and Escape
+- Operator replacement before second operand entry
+- Result reuse and fresh calculation after results
+- Meaningful feedback for division by zero and invalid requests
+- No unintended browser behavior caused by keyboard shortcuts
+- No duplicate keyboard handling when focus is on an interactive element
+
+## Testing
+
+Add focused React Testing Library tests and API client tests covering:
+
+- Rendering and accessible controls
+- Digit/operator entry
+- Keyboard interactions
+- API request payloads and success rendering
+- Error responses
+- Loading state and duplicate-request prevention
+- Clear during pending requests
+- Stale responses and network failures
+
+Do not replicate arithmetic calculations in frontend production code.
+
+## Verification
+
+Run:
+
+- npm run typecheck
+- npm test
+- npm run build
+- Go tests if backend files are changed
+
+Start both the Go server and Vite frontend and verify at least one real end-to-end calculation through the API. If browser interaction cannot be verified, report that explicitly rather than claiming success.
+
+## Documentation and workflow
+
+- Update TASKS.md with accurate progress.
+- Update README.md with frontend setup instructions.
+- Update relevant design documentation if decisions change.
+- Log this prompt in AI_PROMPTS.md.
+- Do not commit or push automatically.
+
+## Final report
+
+Provide:
+
+1. Files created or modified.
+2. UI implementation summary.
+3. API integration and cancellation behavior.
+4. Test results.
+5. Actual integration verification results.
+6. Remaining limitations.
+7. Next proposed task.
+
+Stop after Task 3.2 and wait for approval.
 ````

@@ -1,0 +1,60 @@
+:root {
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #253c33;
+  background: #f1f2ed;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 280px; }
+button { font: inherit; -webkit-tap-highlight-color: transparent; }
+.page { min-height: 100svh; display: grid; place-items: center; padding: 40px 20px; }
+.workspace { width: min(100%, 400px); }
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+.wordmark { font-size: 24px; font-weight: 800; letter-spacing: -1px; }
+.wordmark-dot { color: #37846b; }
+.eyebrow { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #617168; }
+h1 { margin: 0; font-size: 29px; font-weight: 600; letter-spacing: -1px; }
+.intro { margin: 8px 0 25px; font-size: 14px; color: #627168; line-height: 1.5; }
+.calculator { border-radius: 24px; background: #fafbf8; border: 1px solid #dbe1d8; box-shadow: 0 16px 40px #233e2e0d, 0 2px 4px #233e2e05; overflow: hidden; }
+.calculator:focus { outline: none; }
+.calculator:focus-visible { outline: 3px solid #37846b; outline-offset: 5px; }
+.display { background: #223c32; color: #f7fbf5; padding: 25px 25px 18px; }
+.display-heading { display: flex; align-items: center; justify-content: space-between; font-size: 10px; text-transform: uppercase; letter-spacing: 1.8px; color: #b7cdbf; }
+.display-indicator { width: 6px; height: 6px; background: #a9cbb4; border-radius: 50%; }
+.expression { min-height: 23px; margin-top: 25px; color: #b7cdbf; text-align: right; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.number { display: block; width: 100%; margin-top: 5px; text-align: right; font-size: clamp(42px, 12vw, 58px); line-height: 1.2; font-weight: 400; letter-spacing: -2px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.number-long { font-size: clamp(23px, 6.5vw, 30px); letter-spacing: -.6px; min-height: 70px; align-content: center; }
+.feedback { min-height: 30px; margin-top: 8px; }
+.feedback p { margin: 0; font-size: 12px; line-height: 1.5; color: #b7cdbf; }
+.display-error .feedback p { color: #ffcec1; }
+.feedback span { display: block; }
+.keypad { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 19px; }
+.key { min-height: 62px; padding: 12px 5px; border-radius: 13px; border: 1px solid #e1e5dd; background: #fff; color: #263d33; font-size: 24px; font-weight: 500; cursor: pointer; box-shadow: 0 2px 0 #e5e9e1; transition: background-color 120ms, transform 120ms, box-shadow 120ms; touch-action: manipulation; }
+.key.utility { background: #e9ede6; border-color: #e9ede6; font-size: 20px; color: #526450; }
+.key.operator { background: #e1eee5; border-color: #dae8de; color: #25583d; font-size: 28px; }
+.key.equals { background: #286447; border-color: #286447; color: white; box-shadow: 0 2px 0 #1e5038; font-size: 28px; }
+.key.zero { grid-column: span 2; text-align: left; padding-left: 30px; }
+.key[aria-pressed="true"] { background: #bdd9c7; border-color: #6d9c7e; }
+@media (hover: hover) {
+  .key:hover:not([aria-disabled="true"]) { background: #eef2e9; }
+  .key.operator:hover:not([aria-disabled="true"]) { background: #ccdfd0; }
+  .key.equals:hover:not([aria-disabled="true"]) { background: #1d5439; }
+}
+.key:active:not([aria-disabled="true"]) { transform: translateY(2px); box-shadow: none; }
+.key:focus-visible, summary:focus-visible { outline: 3px solid #3b8060; outline-offset: 3px; }
+.key[aria-disabled="true"] { opacity: .5; cursor: wait; }
+.keyboard-hint { margin: 22px 0 8px; text-align: center; color: #657367; font-size: 12px; }
+.shortcuts { text-align: center; font-size: 12px; color: #596c5f; }
+.shortcuts summary { display: inline-block; cursor: pointer; text-decoration: underline; text-underline-offset: 4px; border-radius: 2px; padding: 5px; }
+.shortcuts p { line-height: 1.7; margin: 12px 8px; text-align: left; }
+@media (max-width: 360px) {
+  .page { padding: 24px 12px; }
+  .keypad { gap: 8px; padding: 14px; }
+  .key { min-height: 55px; }
+  .display { padding-inline: 20px; }
+  .eyebrow { letter-spacing: .8px; font-size: 9px; }
+}
+@media (prefers-reduced-motion: reduce) { .key { transition: none; } }

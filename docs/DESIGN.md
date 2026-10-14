@@ -1,6 +1,6 @@
 # Calculator design
 
-Status: backend architecture and API policy accepted; frontend/deployment decisions revised per user review on 2026-10-14. The backend is implemented, reviewed, and approved. Task 3.1 implements the React setup and pure calculator reducer. Keypad visuals and HTTP execution remain pending.
+Status: backend architecture and API policy accepted; frontend/deployment decisions revised per user review on 2026-10-14. The backend is implemented, reviewed, and approved. Task 3.1 implements the React setup and pure calculator reducer; task 3.2 connects the API and implements the responsive keypad and keyboard controls.
 
 ## Initial environment evidence (planning snapshot)
 
@@ -12,7 +12,7 @@ Status: backend architecture and API policy accepted; frontend/deployment decisi
 
 ## Agreed structure and flow
 
-Target layout. The Go backend, root Vite setup, React mounting/setup page, and calculator reducer/tests are implemented. App tests, API client/tests, styles, and DOM test setup remain future work:
+Implemented layout (DOM test environment/matchers are configured directly in App.test.tsx):
 
 ```text
 sezzle-calculator/
@@ -30,7 +30,7 @@ sezzle-calculator/
 │   ├── calculator.ts / calculator.test.ts # reducer and transitions
 │   ├── api.ts / api.test.ts        # fetch and response validation
 │   ├── styles.css
-│   └── test/setup.ts
+│   └── vite-env.d.ts
 ├── .gitignore
 ├── README.md / AGENTS.md / TASKS.md / AI_PROMPTS.md
 └── docs/
@@ -38,7 +38,7 @@ sezzle-calculator/
     └── DECISIONS.md
 ```
 
-React calls relative `/api/calculate`. When integration is implemented, Vite will proxy `/api` to the Go server on localhost:8080; task 3.1 does not configure the proxy yet. The local executable composes the `httpapi` handler, which calls `calculator`. The arithmetic package has no HTTP or hosting dependencies. Production hosting is optional and undecided; relative API URLs allow a future same-origin arrangement without coupling business logic to a provider. No database, router library, CORS middleware, client router, state library, or npm workspace tooling is needed.
+React calls relative `/api/calculate`. Vite proxies `/api` to the Go server on localhost:8080 in development. The local executable composes the `httpapi` handler, which calls `calculator`. The arithmetic package has no HTTP or hosting dependencies. Production hosting is optional and undecided; relative API URLs allow a future same-origin arrangement without coupling business logic to a provider. No database, router library, CORS middleware, client router, state library, or npm workspace tooling is needed.
 
 Go-specific rationale: `cmd/server` holds the executable; `internal` restricts external imports of implementation packages. Plain functions and explicit returned errors fit this small service; interfaces add no useful seam here. Request operand pointers distinguish missing/null input from valid zero. These conventions follow [Go module layout guidance](https://go.dev/doc/modules/layout).
 
@@ -113,7 +113,7 @@ Use a small reducer with discriminated states: `firstEntry`, `operatorSelected`,
 
 | State/event | Behavior |
 | --- | --- |
-| Initial / Clear | First entry is `0`; no operator, result, or error. Clear invalidates pending work; the future effect layer must abort it. |
+| Initial / Clear | First entry is `0`; no operator, result, or error. Clear invalidates pending work; effect cleanup aborts it. |
 | Digits during entry | Replace leading `0` (preserve a toggled minus), otherwise append. Digits after result start a fresh first operand. Ignore a digit that would overflow the finite number range; ordinary binary rounding/underflow remains accepted. |
 | Decimal | Start with `0.` if needed; append only if the active entry lacks a decimal. A second decimal is ignored. After result, start a fresh `0.`. |
 | ± | Toggle the leading sign of the editable operand as text, including `-0`. After operator selection, start second entry at `-0`. After result, enter its displayed value with the sign toggled as a new first operand. This is input editing, not client-side evaluation. |
@@ -135,13 +135,17 @@ Implemented task 3.1 boundary: `src/calculator.ts` exposes a pure `calculatorRed
 
 There is no empty editable operand: initial/Clear/backspace-to-empty becomes `0`. `operatorSelected` alone represents an absent second operand; explicitly pressing `0`, decimal, or ± begins one. Repeated decimals are ignored, leading integer zeros collapse, fractional zeros are preserved, and sign toggling preserves `-0` until transport/backend normalization. Retrying an error keeps its continuation; editing the failed pair drops that continuation so equals only submits the edited binary pair. Failed operator replacement retains the right operand and does not submit until the next equals/operator event.
 
-The next task owns API execution, timeout/abort effects, and response validation; the final keypad/keyboard behavior below is still planned. App.tsx is an unstyled setup placeholder, not a calculator UI. Vitest reducer tests run in Node with explicitly supplied completion events and no arithmetic fakes or network dependency.
+Task 3.2 implements the keypad and request effect in App.tsx, preserving the reducer unchanged. src/api.ts POSTs the wire-ready request to the relative endpoint, validates HTTP status/media type/finite numeric success, maps known error codes to local messages, and hides raw bodies. A 10-second AbortController timeout covers both headers and body reading. The App effect owns cancellation on Clear/unmount and ignores aborted completions; reducer IDs provide independent protection against stale completion events. The effect depends on the stable pending submission, so blocked input cannot resend it.
+
+The panel uses a warm neutral background, dark green display, muted operator keys, and a strong equals key, with system fonts and plain CSS. Native buttons have accessible names, operator pressed state, focus rings and 55px minimum CSS height (59px measured at the tested 320px layout). `aria-disabled` plus click/reducer guards blocks pending keys while retaining focus. The live result and loading text announce updates; errors are alerts. Long values wrap without truncation or numerical rounding. Reduced-motion preferences disable button transitions. No icon/font network dependency is used.
+
+The panel receives initial focus and handles keyboard events locally. Native button Enter/Space activation remains intact; supported calculator shortcuts prevent browser defaults, while modifier shortcuts, composition, Tab, and unrelated interactive controls pass through. React tests run in jsdom under StrictMode and mock fetch; original reducer tests remain unchanged and use Node with explicitly supplied responses.
 
 Keyboard mapping within the focused calculator: digits, `.`, `+`, `-`, `*`, `/`, Enter or `=` for equals, Backspace, Escape/Delete for Clear, and F9 for sign toggle (also always available as a button). Document shortcuts accessibly. Preserve Tab/Shift+Tab and native Space/Enter activation on focused buttons; avoid handling a native button activation twice. Do not capture browser shortcuts or keys in unrelated inputs. Minus selects subtraction; ±/F9 edits the operand's sign.
 
 Only parse finite operands for transport and edit their text on the client. All addition, subtraction, multiplication, division, and chained answers come from Go. Backend validation remains authoritative. Results in exponent notation may be reused unchanged; the keypad does not need exponent-entry keys.
 
-The implemented reducer uses a monotonically increasing request identity. The future effect layer must add an AbortController. Accept completion only for the currently pending identity. Clear invalidates the identity before aborting, so late successes and failures cannot restore cleared state; unmount cancels silently. A 10-second timeout enters a retryable error state. Network errors, malformed success payloads, and non-JSON server responses must produce safe errors. Do not render raw server response bodies.
+The implemented reducer uses a monotonically increasing request identity. The App effect and API client use AbortController for cancellation and timeout handling. Accept completion only for the currently pending identity. Clear invalidates the identity before aborting, so late successes and failures cannot restore cleared state; unmount cancels silently. A 10-second timeout enters a retryable error state. Network errors, malformed success payloads, and non-JSON server responses must produce safe errors. Do not render raw server response bodies.
 
 ## Tests and coverage
 
@@ -163,4 +167,4 @@ Deployment is an optional final milestone after the required implementation, doc
 
 ## Current implementation boundary
 
-Tasks 2.1–2.3 implement the approved Go backend; its read-only review is complete. Task 3.1 implements React/TypeScript/Vite/Vitest setup and the pure state machine with request intents and unit tests. Backend source remains unchanged. No API client/proxy, request effects, final keypad/keyboard interface, deployment, commit, or push is included. Next proposed task 3.2 connects typed API execution and request lifecycle handling, subject to approval. TASKS.md reconciles the prior task numbering and records actual verification.
+The approved Go backend and pure reducer remain unchanged. Task 3.2 implements the React keypad, accessible keyboard controls, responsive plain CSS, typed API client, Vite proxy, and request lifecycle. The user combined the former proposed API/keypad tasks into this milestone. Tests, production build, real Go/Vite browser interaction, and 320px/desktop layout checks passed as recorded in TASKS.md. No deployment, commit, or push is included. Next proposed task 5.1 reviews frontend behavior and coverage, subject to approval.
